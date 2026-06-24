@@ -45,9 +45,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       // Migrate priority
-      if (migrated.priority === 'Ưu tiên cao') migrated.priority = 'High' as any;
-      else if (migrated.priority === 'Ưu tiên trung bình') migrated.priority = 'Medium' as any;
-      else if (migrated.priority === 'Ưu tiên thấp') migrated.priority = 'Low' as any;
+      if (migrated.priority === 'Ưu tiên cao' as any) migrated.priority = 'High' as any;
+      else if (migrated.priority === 'Ưu tiên trung bình' as any) migrated.priority = 'Medium' as any;
+      else if (migrated.priority === 'Ưu tiên thấp' as any) migrated.priority = 'Low' as any;
       
       return migrated;
     });

@@ -64,7 +64,7 @@ interface ContentMetadata {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-function buildContentMetadata(
+export function buildContentMetadata(
   type: ContentMetadata['contentType'],
   prompt: string,
   content: string,
@@ -161,11 +161,8 @@ function isFollowUpMessage(message: string): boolean {
 }
 
 function generateFollowUpResponse({
-  currentMessage,
-  previousMessages,
   lastAssistantMessage,
   selectedProject,
-  selectedActivity
 }: {
   currentMessage: string;
   previousMessages: any[];
@@ -1152,7 +1149,7 @@ function PosterImageCard({ isLoading, result }: { isLoading: boolean; result: Mo
               {/* Notice */}
               <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.18)', borderRadius: '8px', padding: '0.6rem 0.875rem', display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
                 <span style={{ fontSize: '0.85rem', flexShrink: 0 }}>ℹ️</span>
-                <p style={{ fontSize: '0.75rem', color: '#92400e', lineHeight: 1.55, margin: 0, color: '#fbbf24' }}>
+                <p style={{ fontSize: '0.75rem', lineHeight: 1.55, margin: 0, color: '#fbbf24' }}>
                   Tính năng tạo ảnh thực tế sẽ được kích hoạt khi kết nối Image Generation API.
                 </p>
               </div>

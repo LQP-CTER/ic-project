@@ -9,7 +9,7 @@ import { ActivityDetail } from '../components/ActivityDetail';
 import { ProjectForm } from '../components/ProjectForm';
 import {
   Plus, LayoutGrid, List as ListIcon, Calendar, ChevronLeft,
-  TrendingUp, Clock, CheckCircle2, AlertCircle, FolderOpen, Pencil, Trash2
+  Clock, CheckCircle2, AlertCircle, FolderOpen, Pencil, Trash2
 } from 'lucide-react';
 import { useData } from '../context/DataContext';
 
@@ -47,10 +47,7 @@ function formatDate(d: string) {
   return `${dt.getDate()}/${dt.getMonth() + 1}`;
 }
 
-function calcProgress(acts: Activity[]) {
-  if (!acts.length) return 0;
-  return Math.round((acts.filter(a => a.status === 'Hoàn thành').length / acts.length) * 100);
-}
+
 
 // ─── Project Card ─────────────────────────────────────────────────────────────
 function ProjectCard({
@@ -226,10 +223,10 @@ function ProjectCard({
 
 // ─── Kanban Board (reusable) ──────────────────────────────────────────────────
 function KanbanBoard({
-  filteredActivities, allActivities, onOpenDetail, onDragStart, onDragOver, onDragLeave, onDrop, dragOverCol, getProjectName, showProjectName, onViewAll,
+  filteredActivities, onOpenDetail, onDragStart, onDragOver, onDragLeave, onDrop, dragOverCol, getProjectName, showProjectName, onViewAll,
 }: {
   filteredActivities: Activity[];
-  allActivities: Activity[];
+  allActivities?: Activity[];
   onOpenDetail: (a: Activity) => void;
   onDragStart: (e: React.DragEvent, id: string) => void;
   onDragOver: (e: React.DragEvent, s: Status) => void;

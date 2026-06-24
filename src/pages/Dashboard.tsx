@@ -1,6 +1,5 @@
 import { Card } from '../components/ui/Card';
 import { useData } from '../context/DataContext';
-import type { Activity } from '../data/mockData';
 import { getDeadlineIndicator } from '../data/mockData';
 import { BarChart3, CheckCircle, Clock, AlertTriangle, ListTodo } from 'lucide-react';
 

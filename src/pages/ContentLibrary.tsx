@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useData } from '../context/DataContext';
 import { useNavigate } from 'react-router-dom';
 import { type Content } from '../data/mockData';
@@ -72,7 +72,7 @@ export function ContentLibrary() {
       {/* SECTION 2: STATISTICS */}
       <div style={{ maxWidth: '320px', width: '100%' }}>
         {stats.map((stat, i) => (
-          <Card key={i} className="flex-col gap-3" style={{ padding: '1rem' }}>
+          <Card key={i} className="flex-col gap-3 p-4">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <h3 style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-secondary)' }}>{stat.label}</h3>
               <div style={{ padding: '6px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)' }} className={stat.color}>

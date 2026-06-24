@@ -6,8 +6,8 @@ import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { useNavigate } from 'react-router-dom';
 import {
-  Clock, Layers, Eye, Play, CheckCircle, X,
-  ArrowRight, Sparkles, CalendarDays, User
+  Clock, Layers, Eye, Play, CheckCircle,
+  ArrowRight, Sparkles
 } from 'lucide-react';
 
 // ─── Template Card ────────────────────────────────────────────────────────────
@@ -352,8 +352,8 @@ export function WorkflowAssistant() {
   const navigate = useNavigate();
   const [modalMode, setModalMode] = useState<ModalMode>('none');
   const [activeTemplate, setActiveTemplate] = useState<WorkflowTemplate | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('All');
+  // const [searchTerm, setSearchTerm] = useState('');
+  // const [categoryFilter, setCategoryFilter] = useState('All');
   const [createdProjectName, setCreatedProjectName] = useState('');
 
   const openPreview = (t: WorkflowTemplate) => {
