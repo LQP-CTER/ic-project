@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Input } from './ui/Input';
+import { Input, Select, Textarea } from './ui/Input';
 import { Button } from './ui/Button';
 import { type Activity, type Status } from '../data/mockData';
 import { useData } from '../context/DataContext';
@@ -42,86 +42,50 @@ export function ActivityForm({ initialData, onSubmit, onCancel }: ActivityFormPr
     onSubmit(formData);
   };
 
-  const col2: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.875rem' };
-
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
-
-      {/* Tên hoạt động */}
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <Input label="Tên hoạt động *" name="name" value={formData.name} onChange={handleChange} required />
 
-      {/* Dự án */}
-      <div className="input-group">
-        <label className="input-label">Dự án *</label>
-        <select name="projectId" value={formData.projectId} onChange={handleChange} className="input-field" required>
-          {projects.length === 0
-            ? <option value="">— Chưa có dự án nào —</option>
-            : projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)
-          }
-        </select>
-      </div>
+      <Select label="Dự án *" name="projectId" value={formData.projectId} onChange={handleChange} required>
+        {projects.length === 0
+          ? <option value="">Chưa có dự án nào</option>
+          : projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)
+        }
+      </Select>
 
-      {/* Mô tả */}
-      <div className="input-group">
-        <label className="input-label">Mô tả</label>
-        <textarea name="description" value={formData.description} onChange={handleChange}
-          className="input-field" rows={2} style={{ resize: 'vertical' }} />
-      </div>
+      <Textarea label="Mô tả" name="description" value={formData.description} onChange={handleChange} rows={2} />
 
-      {/* Người phụ trách + Kênh */}
-      <div style={col2}>
+      <div className="grid grid-cols-2 gap-4">
         <Input label="Người phụ trách" name="assignee" value={formData.assignee} onChange={handleChange} />
         <Input label="Kênh truyền thông" name="channel" value={formData.channel} onChange={handleChange} />
       </div>
 
-      {/* Ngày bắt đầu + Deadline */}
-      <div style={col2}>
+      <div className="grid grid-cols-2 gap-4">
         <Input type="date" label="Ngày bắt đầu" name="startDate" value={formData.startDate} onChange={handleChange} />
         <Input type="date" label="Deadline" name="deadline" value={formData.deadline} onChange={handleChange} />
       </div>
 
-      {/* Priority + Trạng thái */}
-      <div style={col2}>
-        <div className="input-group">
-          <label className="input-label">Mức độ ưu tiên</label>
-          <select
-            name="priority"
-            value={formData.priority}
-            onChange={handleChange}
-            className="input-field"
-            required
-          >
-            <option value="High">🔴 High</option>
-            <option value="Medium">🟡 Medium</option>
-            <option value="Low">🟢 Low</option>
-          </select>
-        </div>
-        <div className="input-group">
-          <label className="input-label">Trạng thái</label>
-          <select name="status" value={formData.status} onChange={handleChange} className="input-field">
-            <option value="Chưa bắt đầu">Chưa bắt đầu</option>
-            <option value="Đang thực hiện">Đang thực hiện</option>
-            <option value="Chờ duyệt">Chờ duyệt</option>
-            <option value="Hoàn thành">Hoàn thành</option>
-          </select>
-        </div>
+      <div className="grid grid-cols-2 gap-4">
+        <Select label="Mức độ ưu tiên" name="priority" value={formData.priority} onChange={handleChange}>
+          <option value="High">High</option>
+          <option value="Medium">Medium</option>
+          <option value="Low">Low</option>
+        </Select>
+        <Select label="Trạng thái" name="status" value={formData.status} onChange={handleChange}>
+          <option value="Chưa bắt đầu">Chưa bắt đầu</option>
+          <option value="Đang thực hiện">Đang thực hiện</option>
+          <option value="Chờ duyệt">Chờ duyệt</option>
+          <option value="Hoàn thành">Hoàn thành</option>
+        </Select>
       </div>
 
-      {/* Tài liệu đính kèm */}
-      <Input label="Tài liệu đính kèm (tùy chọn)" name="attachmentLink"
-        value={formData.attachmentLink} onChange={handleChange}
-        placeholder="https://docs.google.com/... hoặc https://figma.com/..." />
+      <Input label="Tài liệu đính kèm" name="attachmentLink" value={formData.attachmentLink} onChange={handleChange} placeholder="https://..." />
 
-      {/* Ghi chú */}
-      <div className="input-group">
-        <label className="input-label">Ghi chú</label>
-        <textarea name="notes" value={formData.notes} onChange={handleChange}
-          className="input-field" rows={2} style={{ resize: 'vertical' }} />
-      </div>
+      <Textarea label="Ghi chú" name="notes" value={formData.notes} onChange={handleChange} rows={2} />
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', paddingTop: '0.5rem' }}>
+      <div className="flex justify-end gap-3 pt-2">
         <Button type="button" variant="ghost" onClick={onCancel}>Hủy</Button>
-        <Button type="submit" variant="primary">{isEditing ? 'Cập nhật' : 'Tạo mới'}</Button>
+        <Button type="submit">{isEditing ? 'Cập nhật' : 'Tạo mới'}</Button>
       </div>
     </form>
   );

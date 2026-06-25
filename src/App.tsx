@@ -5,12 +5,27 @@ import { Activities } from './pages/Activities';
 import { AIStudio } from './pages/AIStudio';
 import { WorkflowAssistant } from './pages/WorkflowAssistant';
 import { ContentLibrary } from './pages/ContentLibrary';
+import { LoginPage } from './pages/LoginPage';
+import { useAuth } from './context/AuthContext';
+
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-surface-secondary flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+  if (!user) return <LoginPage />;
+  return <>{children}</>;
+}
 
 function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Layout />}>
+        <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
           <Route index element={<Dashboard />} />
           <Route path="activities" element={<Activities />} />
           <Route path="ai-assistant" element={<AIStudio />} />

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { Activity, Project, Status } from '../data/mockData';
 import { getDeadlineIndicator } from '../data/mockData';
 import { Button } from '../components/ui/Button';
@@ -7,52 +7,126 @@ import { Modal } from '../components/ui/Modal';
 import { ActivityForm } from '../components/ActivityForm';
 import { ActivityDetail } from '../components/ActivityDetail';
 import { ProjectForm } from '../components/ProjectForm';
-import {
-  Plus, LayoutGrid, List as ListIcon, Calendar, ChevronLeft,
-  Clock, CheckCircle2, AlertCircle, FolderOpen, Pencil, Trash2
-} from 'lucide-react';
 import { useData } from '../context/DataContext';
+import {
+  DndContext,
+  DragOverlay,
+  closestCorners,
+  useDraggable,
+  useDroppable,
+  type DragStartEvent,
+  type DragEndEvent,
+} from '@dnd-kit/core';
 
-// ─── Constants ───────────────────────────────────────────────────────────────
 const STATUSES: Status[] = ['Chưa bắt đầu', 'Đang thực hiện', 'Chờ duyệt', 'Hoàn thành'];
 
-const STATUS_TOP_COLOR: Record<string, string> = {
-  'Chưa bắt đầu': '#64748b',
-  'Đang thực hiện': '#6366f1',
-  'Chờ duyệt': '#f59e0b',
-  'Hoàn thành': '#10b981',
+const STATUS_COLORS: Record<string, { bg: string; text: string; border: string; top: string }> = {
+  'Chưa bắt đầu': { bg: 'bg-surface-tertiary', text: 'text-text-secondary', border: 'border-border', top: 'border-t-text-tertiary' },
+  'Đang thực hiện': { bg: 'bg-primary-light', text: 'text-primary', border: 'border-primary/20', top: 'border-t-primary' },
+  'Chờ duyệt': { bg: 'bg-warning-light', text: 'text-warning', border: 'border-warning/20', top: 'border-t-warning' },
+  'Hoàn thành': { bg: 'bg-success-light', text: 'text-success', border: 'border-success/20', top: 'border-t-success' },
 };
 
-const PRIORITY_STYLE: Record<string, React.CSSProperties> = {
-  'High': { background: 'rgba(239, 68, 68, 0.15)', color: '#EF4444', border: '1px solid rgba(239, 68, 68, 0.25)' },
-  'Medium': { background: 'rgba(245, 158, 11, 0.15)', color: '#F59E0B', border: '1px solid rgba(245, 158, 11, 0.25)' },
-  'Low': { background: 'rgba(34, 197, 94, 0.15)', color: '#22C55E', border: '1px solid rgba(34, 197, 94, 0.25)' },
+const PRIORITY_STYLE: Record<string, string> = {
+  'High': 'bg-danger-light text-danger border-danger/20',
+  'Medium': 'bg-warning-light text-warning border-warning/20',
+  'Low': 'bg-success-light text-success border-success/20',
 };
 
-const PROJECT_STATUS_STYLE: Record<string, { bg: string; color: string }> = {
-  'Đang thực hiện': { bg: 'rgba(99,102,241,0.15)', color: '#818cf8' },
-  'Chưa bắt đầu':  { bg: 'rgba(100,116,139,0.15)', color: '#94a3b8' },
-  'Hoàn thành':    { bg: 'rgba(16,185,129,0.15)', color: '#34d399' },
-  'Tạm dừng':      { bg: 'rgba(245,158,11,0.15)', color: '#fbbf24' },
-  'Kết thúc':      { bg: 'rgba(239,68,68,0.12)', color: '#f87171' },
+const PROJECT_STATUS_STYLE: Record<string, string> = {
+  'Đang thực hiện': 'bg-primary-light text-primary',
+  'Chưa bắt đầu': 'bg-surface-tertiary text-text-secondary',
+  'Hoàn thành': 'bg-success-light text-success',
+  'Tạm dừng': 'bg-warning-light text-warning',
+  'Kết thúc': 'bg-danger-light text-danger',
 };
 
 type ModalMode = 'none' | 'create' | 'detail' | 'edit' | 'newProject' | 'editProject';
-type PageView  = 'projects' | 'kanban' | 'list';
+type PageView = 'projects' | 'kanban' | 'list';
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 function formatDate(d: string) {
   if (!d) return '';
   const dt = new Date(d);
   return `${dt.getDate()}/${dt.getMonth() + 1}`;
 }
 
+function DraggableCard({ activity, onOpen, getProjectName, showProject }: {
+  activity: Activity;
+  onOpen: (a: Activity) => void;
+  getProjectName: (id: string) => string;
+  showProject?: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: activity.id });
+  const computed = getDeadlineIndicator(activity);
 
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      onClick={() => onOpen(activity)}
+      className={`p-3.5 bg-surface rounded-lg border border-border cursor-pointer transition-all duration-150 hover:shadow-sm hover:border-primary/30 ${isDragging ? 'opacity-50' : ''}`}
+    >
+      <p className="text-sm font-semibold text-text-primary leading-snug mb-2">{activity.name}</p>
+      {showProject && (
+        <p className="text-xs text-primary font-medium mb-2">{getProjectName(activity.projectId)}</p>
+      )}
+      <div className="flex flex-wrap gap-1.5 mb-2">
+        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${PRIORITY_STYLE[activity.priority]}`}>
+          {activity.priority}
+        </span>
+        {computed.indicator && (
+          <span className={`text-[10px] font-medium px-2 py-0.5 rounded border ${computed.isOverdue ? 'bg-danger-light text-danger border-danger/20' : 'bg-surface-tertiary text-text-tertiary border-border'}`}>
+            {computed.indicator}
+          </span>
+        )}
+      </div>
+      <div className="flex items-center justify-between">
+        {activity.assignee && (
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-white text-[10px] font-bold">
+              {activity.assignee.charAt(0).toUpperCase()}
+            </div>
+            <span className="text-xs text-text-secondary">{activity.assignee.split(' ').slice(-1)[0]}</span>
+          </div>
+        )}
+        {activity.deadline && (
+          <span className={`text-xs ${computed.isOverdue ? 'text-danger font-medium' : 'text-text-tertiary'}`}>
+            {formatDate(activity.deadline)}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
 
-// ─── Project Card ─────────────────────────────────────────────────────────────
-function ProjectCard({
-  project, acts, onOpen, onEdit, onDelete,
-}: {
+function DroppableColumn({ status, children, count }: {
+  status: Status;
+  children: React.ReactNode;
+  count: number;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: status });
+  const colors = STATUS_COLORS[status];
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`flex flex-col rounded-xl border-2 border-t-[3px] transition-all duration-200 ${colors.top} ${isOver ? 'border-primary/50 bg-primary-50' : 'border-border bg-surface-secondary'}`}
+    >
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <span className="text-sm font-semibold text-text-primary">{status}</span>
+        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${colors.bg} ${colors.text}`}>
+          {count}
+        </span>
+      </div>
+      <div className="flex-1 p-3 flex flex-col gap-2 min-h-[100px]">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function ProjectCard({ project, acts, onOpen, onEdit, onDelete }: {
   project: Project;
   acts: Activity[];
   onOpen: () => void;
@@ -62,575 +136,188 @@ function ProjectCard({
   const total = acts.length;
   const done = acts.filter(a => a.status === 'Hoàn thành').length;
   const progress = total === 0 ? 0 : Math.round((done / total) * 100);
-  
+  const isOverdue = project.deadline && new Date().toISOString().split('T')[0] > project.deadline && progress < 100;
+  const pStyle = PROJECT_STATUS_STYLE[project.status] || PROJECT_STATUS_STYLE['Chưa bắt đầu'];
+
   let overdueCount = 0;
   let dueSoonCount = 0;
-  
   acts.forEach(act => {
-    const indicator = getDeadlineIndicator(act);
-    if (indicator.indicator === 'Quá hạn') overdueCount++;
-    if (indicator.indicator === 'Sắp đến hạn') dueSoonCount++;
+    const ind = getDeadlineIndicator(act);
+    if (ind.indicator === 'Quá hạn') overdueCount++;
+    if (ind.indicator === 'Sắp đến hạn') dueSoonCount++;
   });
 
-  const isProjectOverdue = project.deadline && new Date().toISOString().split('T')[0] > project.deadline && progress < 100;
-  const pSt = PROJECT_STATUS_STYLE[project.status] || PROJECT_STATUS_STYLE['Chưa bắt đầu'];
-
   return (
-    <div
-      style={{
-        background: 'rgba(22,32,52,0.85)',
-        border: '1px solid rgba(255,255,255,0.07)',
-        borderRadius: '16px',
-        padding: '1.375rem',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '1rem',
-        transition: 'border-color 0.2s, transform 0.18s',
-      }}
-      onMouseEnter={e => {
-        const el = e.currentTarget as HTMLDivElement;
-        el.style.borderColor = 'rgba(99,102,241,0.4)';
-        el.style.transform = 'translateY(-2px)';
-      }}
-      onMouseLeave={e => {
-        const el = e.currentTarget as HTMLDivElement;
-        el.style.borderColor = 'rgba(255,255,255,0.07)';
-        el.style.transform = 'translateY(0)';
-      }}
-    >
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h3 style={{ fontSize: '0.9375rem', fontWeight: 700, marginBottom: '4px', color: '#f8fafc' }}>
-            {project.name}
-          </h3>
+    <div className="bg-surface rounded-xl border border-border p-5 flex flex-col gap-4 transition-all duration-200 hover:shadow-md hover:border-primary/30">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <h3 className="text-sm font-bold text-text-primary mb-1">{project.name}</h3>
           {project.description && (
-            <p style={{
-              fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: '1.5',
-              overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-            }}>
-              {project.description}
-            </p>
+            <p className="text-xs text-text-secondary leading-relaxed line-clamp-2">{project.description}</p>
           )}
         </div>
-        {/* Edit / Delete buttons */}
-        <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-          <button
-            onClick={(e) => { e.stopPropagation(); onEdit(); }}
-            title="Chỉnh sửa"
-            style={{
-              width: '28px', height: '28px', borderRadius: '6px', border: 'none', cursor: 'pointer',
-              background: 'rgba(255,255,255,0.06)', color: 'var(--text-secondary)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'background 0.15s, color 0.15s',
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(99,102,241,0.2)'; (e.currentTarget as HTMLButtonElement).style.color = '#818cf8'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.06)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)'; }}
-          >
-            <Pencil size={13} />
+        <div className="flex gap-1 shrink-0">
+          <button onClick={e => { e.stopPropagation(); onEdit(); }} className="w-7 h-7 rounded-md text-text-tertiary hover:bg-primary-light hover:text-primary transition-colors text-xs font-medium">
+            Edit
           </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            title="Xóa dự án"
-            style={{
-              width: '28px', height: '28px', borderRadius: '6px', border: 'none', cursor: 'pointer',
-              background: 'rgba(255,255,255,0.06)', color: 'var(--text-secondary)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'background 0.15s, color 0.15s',
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.15)'; (e.currentTarget as HTMLButtonElement).style.color = '#f87171'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.06)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)'; }}
-          >
-            <Trash2 size={13} />
+          <button onClick={e => { e.stopPropagation(); onDelete(); }} className="w-7 h-7 rounded-md text-text-tertiary hover:bg-danger-light hover:text-danger transition-colors text-xs font-medium">
+            Del
           </button>
         </div>
       </div>
 
-      {/* Progress bar */}
       <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-          <span style={{ fontSize: '0.6875rem', color: 'var(--text-secondary)' }}>Tiến độ</span>
-          <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: progress === 100 ? '#34d399' : '#818cf8' }}>
-            {progress}%
-          </span>
+        <div className="flex justify-between mb-1.5">
+          <span className="text-[11px] text-text-tertiary">Tiến độ</span>
+          <span className={`text-[11px] font-semibold ${progress === 100 ? 'text-success' : 'text-primary'}`}>{progress}%</span>
         </div>
-        <div style={{ height: '5px', background: 'rgba(255,255,255,0.07)', borderRadius: '999px', overflow: 'hidden' }}>
-          <div style={{
-            height: '100%', borderRadius: '999px',
-            width: `${progress}%`,
-            background: progress === 100 ? '#10b981' : 'linear-gradient(90deg, #6366f1, #8b5cf6)',
-            transition: 'width 0.4s ease',
-          }} />
+        <div className="h-1.5 bg-surface-tertiary rounded-full overflow-hidden">
+          <div className={`h-full rounded-full transition-all duration-500 ${progress === 100 ? 'bg-success' : 'bg-primary'}`} style={{ width: `${progress}%` }} />
         </div>
       </div>
 
-      {/* Stats row */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <span style={{ fontSize: '0.6875rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <CheckCircle2 size={12} style={{ color: '#34d399' }} />
-            {done}/{total} hoạt động
-          </span>
+      <div className="flex items-center justify-between">
+        <div className="flex gap-3 text-xs text-text-secondary">
+          <span>{done}/{total} hoạt động</span>
           {project.deadline && (
-            <span style={{ fontSize: '0.6875rem', color: isProjectOverdue ? '#f87171' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Clock size={12} style={{ color: isProjectOverdue ? '#f87171' : '#94a3b8' }} />
-              {project.deadline}
-            </span>
+            <span className={isOverdue ? 'text-danger' : ''}>{project.deadline}</span>
           )}
         </div>
-        <span style={{
-          fontSize: '0.625rem', fontWeight: 600, padding: '2px 8px', borderRadius: '999px',
-          background: pSt.bg, color: pSt.color,
-        }}>
-          {project.status}
-        </span>
+        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${pStyle}`}>{project.status}</span>
       </div>
 
-      {/* Activity Alerts */}
       {(overdueCount > 0 || dueSoonCount > 0) && (
-        <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-          {overdueCount > 0 && (
-            <span style={{ fontSize: '0.6875rem', color: '#f87171', background: 'rgba(239,68,68,0.1)', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
-              {overdueCount} quá hạn
-            </span>
-          )}
-          {dueSoonCount > 0 && (
-            <span style={{ fontSize: '0.6875rem', color: '#fbbf24', background: 'rgba(245,158,11,0.1)', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
-              {dueSoonCount} sắp đến hạn
-            </span>
-          )}
+        <div className="flex gap-2">
+          {overdueCount > 0 && <span className="text-[11px] text-danger bg-danger-light px-2 py-0.5 rounded font-medium">{overdueCount} quá hạn</span>}
+          {dueSoonCount > 0 && <span className="text-[11px] text-warning bg-warning-light px-2 py-0.5 rounded font-medium">{dueSoonCount} sắp đến hạn</span>}
         </div>
       )}
 
-      {/* Action Button */}
-      <div style={{ marginTop: '16px' }}>
-        <button
-          onClick={onOpen}
-          style={{
-            width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid rgba(99,102,241,0.3)',
-            background: 'rgba(99,102,241,0.1)', color: '#818cf8', fontWeight: 600, fontSize: '0.8125rem',
-            cursor: 'pointer', transition: 'all 0.15s'
-          }}
-          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(99,102,241,0.2)'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(99,102,241,0.1)'; }}
-        >
-          Xem chi tiết
-        </button>
-      </div>
+      <button
+        onClick={onOpen}
+        className="w-full py-2 rounded-lg border border-primary/30 bg-primary-light text-primary text-sm font-semibold hover:bg-primary/10 transition-colors"
+      >
+        Xem chi tiết
+      </button>
     </div>
   );
 }
 
-// ─── Kanban Board (reusable) ──────────────────────────────────────────────────
-function KanbanBoard({
-  filteredActivities, onOpenDetail, onDragStart, onDragOver, onDragLeave, onDrop, dragOverCol, getProjectName, showProjectName, onViewAll,
-}: {
-  filteredActivities: Activity[];
-  allActivities?: Activity[];
-  onOpenDetail: (a: Activity) => void;
-  onDragStart: (e: React.DragEvent, id: string) => void;
-  onDragOver: (e: React.DragEvent, s: Status) => void;
-  onDragLeave: (e: React.DragEvent) => void;
-  onDrop: (e: React.DragEvent, s: Status) => void;
-  dragOverCol: Status | null;
-  getProjectName: (id: string) => string;
-  showProjectName?: boolean;
-  onViewAll?: (status: Status) => void;
-}) {
-  return (
-    <div style={{
-      flex: 1,
-      display: 'grid',
-      gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-      gap: '1rem',
-      width: '100%',
-      overflowX: 'auto',
-      overflowY: 'auto',
-      paddingBottom: '0.75rem',
-      minHeight: 0,
-      alignItems: 'start'
-    }}>
-      {STATUSES.map(status => {
-        const colActs  = filteredActivities.filter(a => a.status === status);
-        const isTarget = dragOverCol === status;
-        const topColor = STATUS_TOP_COLOR[status] || '#64748b';
-
-        return (
-          <div
-            key={status}
-            onDragOver={e => onDragOver(e, status)}
-            onDragLeave={onDragLeave}
-            onDrop={e => onDrop(e, status)}
-            style={{
-              minWidth: 0,
-              display: 'flex', flexDirection: 'column',
-              borderRadius: '12px',
-              background: isTarget ? 'rgba(99,102,241,0.06)' : 'rgba(15,23,42,0.5)',
-              border: `2px solid ${isTarget ? 'rgba(99,102,241,0.5)' : 'rgba(255,255,255,0.06)'}`,
-              borderTopColor: isTarget ? 'rgba(99,102,241,0.5)' : topColor,
-              borderTopWidth: '3px',
-              transition: 'border-color 0.2s, background 0.2s',
-            }}
-          >
-            {/* Column header */}
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '10px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0,
-            }}>
-              <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>{status}</span>
-              <span style={{
-                fontSize: '0.75rem', fontWeight: 600, background: 'rgba(255,255,255,0.08)',
-                color: 'var(--text-secondary)', padding: '1px 8px', borderRadius: '999px', minWidth: '22px', textAlign: 'center',
-              }}>{colActs.length}</span>
-            </div>
-
-            {/* Cards */}
-            <div style={{ flex: 1, padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {colActs.length === 0 && (
-                <div style={{
-                  padding: '24px 12px', textAlign: 'center', fontSize: '0.75rem',
-                  color: isTarget ? 'rgba(99,102,241,0.7)' : 'rgba(255,255,255,0.2)',
-                  border: `2px dashed ${isTarget ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.08)'}`,
-                  borderRadius: '8px', transition: 'all 0.2s',
-                }}>
-                  {isTarget ? '↓ Thả vào đây' : 'Chưa có hoạt động'}
-                </div>
-              )}
-              {colActs.slice(0, 3).map(act => {
-                const computed = getDeadlineIndicator(act);
-                const overdue = computed.isOverdue;
-                return (
-                  <div
-                    key={act.id}
-                    draggable
-                    onDragStart={e => onDragStart(e, act.id)}
-                    onClick={() => onOpenDetail(act)}
-                    style={{
-                      background: 'rgba(30,41,59,0.8)', backdropFilter: 'blur(8px)',
-                      border: `1px solid ${overdue ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.08)'}`,
-                      borderRadius: '10px', padding: '12px', cursor: 'pointer',
-                      userSelect: 'none', transition: 'border-color 0.15s',
-                      display: 'flex', flexDirection: 'column', gap: '8px',
-                    }}
-                    onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(99,102,241,0.5)'}
-                    onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.borderColor = overdue ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.08)'}
-                  >
-                    {/* Activity title */}
-                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
-                      <p style={{
-                        fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)',
-                        lineHeight: '1.4', margin: 0, wordBreak: 'break-word', flex: 1,
-                      }}>
-                        {act.name}
-                      </p>
-                    </div>
-
-                    {/* Project Name (if showProjectName) */}
-                    {showProjectName && (
-                      <div style={{ fontSize: '0.6875rem', color: '#818cf8', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {getProjectName(act.projectId)}
-                      </div>
-                    )}
-
-                    {/* Badges: Priority, then Deadline */}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                      <span style={{ fontSize: '0.625rem', fontWeight: 600, padding: '2px 6px', borderRadius: '4px', ...PRIORITY_STYLE[act.priority] }}>
-                        {act.priority}
-                      </span>
-                      {computed.indicator && (
-                        <span style={{
-                          fontSize: '0.625rem', fontWeight: 500, padding: '2px 6px', borderRadius: '4px',
-                          background: overdue ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.08)',
-                          color: overdue ? '#f87171' : 'var(--text-secondary)'
-                        }}>
-                          {computed.indicator}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Assignee + Deadline */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      {act.assignee ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <div style={{
-                            width: '22px', height: '22px', borderRadius: '50%',
-                            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: '0.625rem', fontWeight: 700, color: '#fff', flexShrink: 0,
-                          }} title={act.assignee}>
-                            {act.assignee.charAt(0).toUpperCase()}
-                          </div>
-                          <span style={{ fontSize: '0.6875rem', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '90px' }}>
-                            {act.assignee.split(' ').slice(-1)[0]}
-                          </span>
-                        </div>
-                      ) : <span />}
-                      {act.deadline && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.6875rem', color: overdue ? '#f87171' : 'var(--text-secondary)', flexShrink: 0 }}>
-                          <Calendar size={11} />
-                          <span>{formatDate(act.deadline)}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-              {colActs.length > 3 && (
-                <div style={{
-                  marginTop: '4px', padding: '10px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px',
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  border: '1px dashed rgba(255,255,255,0.1)'
-                }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                    +{colActs.length - 3} hoạt động khác
-                  </span>
-                  <button
-                    onClick={() => onViewAll?.(status)}
-                    style={{
-                      background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)', cursor: 'pointer',
-                      fontSize: '0.75rem', fontWeight: 600, color: '#818cf8',
-                      padding: '4px 10px', borderRadius: '6px', transition: 'all 0.15s'
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.2)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.1)'; }}
-                  >
-                    Xem tất cả
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ─── Main Activities Page ─────────────────────────────────────────────────────
 export function Activities() {
   const { activities, projects, addActivity, updateActivity, deleteActivity, addProject, updateProject, deleteProject } = useData();
 
-  // Navigation state
   const [pageView, setPageView] = useState<PageView>('projects');
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null); // null = all projects in kanban
-
-  // Modals
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [modalMode, setModalMode] = useState<ModalMode>('none');
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [deletingProject, setDeletingProject] = useState<Project | null>(null);
-  const [viewAllStatus, setViewAllStatus] = useState<Status | null>(null);
-
-  // Kanban sub-state
   const [viewMode, setViewMode] = useState<'board' | 'list'>('board');
-  const [dragOverCol, setDragOverCol] = useState<Status | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
 
-  // ── Derived data ────────────────────────────────────────────────────────────
-  const filteredActivities = selectedProjectId
-    ? activities.filter(a => a.projectId === selectedProjectId)
-    : activities;
+  const filteredActivities = selectedProjectId ? activities.filter(a => a.projectId === selectedProjectId) : activities;
+  const currentProject = selectedProjectId ? projects.find(p => p.id === selectedProjectId) : null;
+  const getProjectName = (id: string) => projects.find(p => p.id === id)?.name || 'Không có dự án';
+  const getProjectActivities = (pid: string) => activities.filter(a => a.projectId === pid);
 
-  const currentProject = selectedProjectId
-    ? projects.find(p => p.id === selectedProjectId)
-    : null;
-
-  const getProjectName = (id: string) =>
-    projects.find(p => p.id === id)?.name || 'Không có dự án';
-
-  const getProjectActivities = (pid: string) =>
-    activities.filter(a => a.projectId === pid);
-
-  // ── Activity handlers ───────────────────────────────────────────────────────
-  const handleCreateActivity = (newAct: Omit<Activity, 'id'>) => {
-    addActivity(newAct);
-    setModalMode('none');
-  };
-
+  const handleCreateActivity = (newAct: Omit<Activity, 'id'>) => { addActivity(newAct); setModalMode('none'); };
   const handleUpdateActivity = (updates: Omit<Activity, 'id'>) => {
-    if (selectedActivity) {
-      updateActivity(selectedActivity.id, updates);
-      setSelectedActivity({ ...selectedActivity, ...updates });
-    }
+    if (selectedActivity) { updateActivity(selectedActivity.id, updates); setSelectedActivity({ ...selectedActivity, ...updates }); }
     setModalMode('detail');
   };
+  const handleDeleteActivity = (id: string) => { deleteActivity(id); setModalMode('none'); setSelectedActivity(null); };
 
-  const handleDeleteActivity = (id: string) => {
-    deleteActivity(id);
-    setModalMode('none');
-    setSelectedActivity(null);
-  };
-
-  // ── Project handlers ────────────────────────────────────────────────────────
   const handleSaveProject = (data: Omit<Project, 'id'>) => {
-    if (editingProject) {
-      updateProject(editingProject.id, data);
-    } else {
-      addProject(data);
-    }
-    setModalMode('none');
-    setEditingProject(null);
+    if (editingProject) { updateProject(editingProject.id, data); } else { addProject(data); }
+    setModalMode('none'); setEditingProject(null);
   };
 
   const handleDeleteProject = (pid: string) => {
     deleteProject(pid);
-    if (selectedProjectId === pid) {
-      setSelectedProjectId(null);
-      setPageView('projects');
+    if (selectedProjectId === pid) { setSelectedProjectId(null); setPageView('projects'); }
+  };
+
+  const openProject = (pid: string) => { setSelectedProjectId(pid); setPageView('kanban'); setViewMode('board'); };
+
+  const onDragStart = (event: DragStartEvent) => { setActiveId(event.active.id as string); };
+  const onDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+    if (over && STATUSES.includes(over.id as Status)) {
+      updateActivity(active.id as string, { status: over.id as Status });
     }
   };
 
-  // ── Open project detail ─────────────────────────────────────────────────────
-  const openProject = (pid: string) => {
-    setSelectedProjectId(pid);
-    setPageView('kanban');
-    setViewMode('board');
-  };
+  const activeActivity = activeId ? activities.find(a => a.id === activeId) : null;
 
-  // ── Drag & Drop ─────────────────────────────────────────────────────────────
-  const onDragStart = (e: React.DragEvent, id: string) => {
-    e.dataTransfer.setData('activityId', id);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-  const onDragOver = (e: React.DragEvent, status: Status) => {
-    e.preventDefault();
-    setDragOverCol(status);
-  };
-  const onDragLeave = (e: React.DragEvent) => {
-    const related = e.relatedTarget as Node | null;
-    if (related && (e.currentTarget as Node).contains(related)) return;
-    setDragOverCol(null);
-  };
-  const onDrop = (e: React.DragEvent, targetStatus: Status) => {
-    e.preventDefault();
-    const id = e.dataTransfer.getData('activityId');
-    if (id) updateActivity(id, { status: targetStatus });
-    setDragOverCol(null);
-  };
-
-  // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <div className="kanban-page">
-
-      {/* ── HEADER ────────────────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {/* Back button when inside a project */}
+    <div className="flex flex-col gap-5 h-full min-h-0">
+      <div className="flex items-center justify-between flex-wrap gap-3 shrink-0">
+        <div className="flex items-center gap-3">
           {pageView !== 'projects' && (
             <button
               onClick={() => { setPageView('projects'); setSelectedProjectId(null); }}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '4px',
-                padding: '6px 10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)',
-                background: 'rgba(255,255,255,0.05)', color: 'var(--text-secondary)',
-                cursor: 'pointer', fontSize: '0.8125rem', transition: 'all 0.15s',
-              }}
-              onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)'}
-              onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)'}
+              className="px-3 py-1.5 rounded-lg border border-border bg-surface text-text-secondary text-sm hover:bg-surface-tertiary transition-colors"
             >
-              <ChevronLeft size={15} /> Dự án
+              &larr; Dự án
             </button>
           )}
           <div>
-            <h1 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1px' }}>
-              {pageView === 'projects'
-                ? 'Quản lý hoạt động'
-                : currentProject
-                  ? currentProject.name
-                  : 'Tất cả dự án'}
+            <h1 className="text-xl font-bold text-text-primary">
+              {pageView === 'projects' ? 'Quản lý hoạt động' : currentProject?.name || 'Tất cả dự án'}
             </h1>
-            <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
-              {pageView === 'projects'
-                ? `${projects.length} dự án · ${activities.length} hoạt động`
-                : `${filteredActivities.length} hoạt động trong dự án này`}
+            <p className="text-xs text-text-secondary mt-0.5">
+              {pageView === 'projects' ? `${projects.length} dự án · ${activities.length} hoạt động` : `${filteredActivities.length} hoạt động trong dự án này`}
             </p>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+        <div className="flex items-center gap-3">
           {pageView === 'projects' && (
-            <Button
-              variant="secondary"
-              icon={<FolderOpen size={15} />}
-              onClick={() => { setEditingProject(null); setModalMode('newProject'); }}
-            >
-              Tạo dự án mới
-            </Button>
+            <Button variant="secondary" onClick={() => { setEditingProject(null); setModalMode('newProject'); }}>Tạo dự án mới</Button>
           )}
-
           {pageView !== 'projects' && (
             <>
-              {/* View toggle */}
-              <div style={{ display: 'flex', padding: '3px', background: 'rgba(0,0,0,0.3)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div className="flex p-1 bg-surface-tertiary rounded-lg border border-border">
                 {(['board', 'list'] as const).map(mode => (
                   <button key={mode} onClick={() => setViewMode(mode)}
-                    style={{
-                      padding: '6px 8px', borderRadius: '6px', border: 'none', cursor: 'pointer',
-                      background: viewMode === mode ? '#6366f1' : 'transparent',
-                      color: viewMode === mode ? '#fff' : 'var(--text-secondary)',
-                      transition: 'all 0.2s', display: 'flex', alignItems: 'center',
-                    }}>
-                    {mode === 'board' ? <LayoutGrid size={15} /> : <ListIcon size={15} />}
+                    className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${viewMode === mode ? 'bg-primary text-white' : 'text-text-secondary hover:text-text-primary'}`}>
+                    {mode === 'board' ? 'Board' : 'List'}
                   </button>
                 ))}
               </div>
-              <Button icon={<Plus size={15} />} onClick={() => setModalMode('create')}>
-                Tạo hoạt động
-              </Button>
+              <Button onClick={() => setModalMode('create')}>Tạo hoạt động</Button>
             </>
           )}
         </div>
       </div>
 
-      {/* ── PROJECT GRID VIEW ─────────────────────────────── */}
       {pageView === 'projects' && (
-        <div style={{ flex: 1, overflowY: 'auto', paddingBottom: '1rem' }}>
+        <div className="flex-1 overflow-y-auto pb-4">
           {projects.length === 0 ? (
-            <div style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              gap: '1rem', padding: '4rem 2rem', textAlign: 'center',
-              border: '2px dashed rgba(255,255,255,0.08)', borderRadius: '16px',
-            }}>
-              <FolderOpen size={40} style={{ color: 'rgba(255,255,255,0.15)' }} />
-              <div>
-                <p style={{ fontWeight: 600, marginBottom: '4px' }}>Chưa có dự án nào</p>
-                <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                  Tạo dự án mới hoặc sử dụng Workflow để tạo tự động từ template.
-                </p>
-              </div>
-              <Button icon={<Plus size={15} />} onClick={() => { setEditingProject(null); setModalMode('newProject'); }}>
-                Tạo dự án đầu tiên
-              </Button>
+            <div className="flex flex-col items-center justify-center gap-4 py-16 text-center border-2 border-dashed border-border rounded-2xl">
+              <p className="font-semibold text-text-primary">Chưa có dự án nào</p>
+              <p className="text-sm text-text-secondary">Tạo dự án mới hoặc sử dụng Workflow để tạo tự động.</p>
+              <Button onClick={() => { setEditingProject(null); setModalMode('newProject'); }}>Tạo dự án đầu tiên</Button>
             </div>
           ) : (
             <>
-              {/* Quick stats */}
-              <div style={{ display: 'flex', gap: '0.875rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+              <div className="flex gap-3 mb-6 flex-wrap">
                 {[
-                  { label: 'Tổng dự án', value: projects.length, icon: <FolderOpen size={16} />, color: '#818cf8' },
-                  { label: 'Tổng hoạt động', value: activities.length, icon: <ListIcon size={16} />, color: '#60a5fa' },
-                  { label: 'Sắp đến hạn', value: activities.filter(a => getDeadlineIndicator(a).indicator === 'Sắp đến hạn').length, icon: <Clock size={16} />, color: '#fbbf24' },
-                  { label: 'Quá hạn', value: activities.filter(a => getDeadlineIndicator(a).indicator === 'Quá hạn').length, icon: <AlertCircle size={16} />, color: '#f87171' },
+                  { label: 'Tổng dự án', value: projects.length, color: 'text-primary' },
+                  { label: 'Tổng hoạt động', value: activities.length, color: 'text-primary-600' },
+                  { label: 'Sắp đến hạn', value: activities.filter(a => getDeadlineIndicator(a).indicator === 'Sắp đến hạn').length, color: 'text-warning' },
+                  { label: 'Quá hạn', value: activities.filter(a => getDeadlineIndicator(a).indicator === 'Quá hạn').length, color: 'text-danger' },
                 ].map(stat => (
-                  <div key={stat.label} style={{
-                    background: 'rgba(22,32,52,0.8)', border: '1px solid rgba(255,255,255,0.07)',
-                    borderRadius: '12px', padding: '14px 18px',
-                    display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 160px',
-                  }}>
-                    <div style={{ color: stat.color }}>{stat.icon}</div>
+                  <div key={stat.label} className="bg-surface border border-border rounded-xl px-5 py-3.5 flex items-center gap-3 flex-1 min-w-[160px]">
                     <div>
-                      <p style={{ fontSize: '1.125rem', fontWeight: 700, lineHeight: 1 }}>{stat.value}</p>
-                      <p style={{ fontSize: '0.6875rem', color: 'var(--text-secondary)', marginTop: '2px' }}>{stat.label}</p>
+                      <p className={`text-xl font-bold ${stat.color}`}>{stat.value}</p>
+                      <p className="text-[11px] text-text-tertiary mt-0.5">{stat.label}</p>
                     </div>
                   </div>
                 ))}
               </div>
-
-              {/* Project grid */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-                gap: '1rem',
-              }}>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {projects.map(p => (
                   <ProjectCard
                     key={p.id}
@@ -647,22 +334,11 @@ export function Activities() {
         </div>
       )}
 
-      {/* ── PROJECT FILTER TABS (above kanban) ─────────────── */}
       {pageView !== 'projects' && (
-        <div style={{
-          display: 'flex', gap: '6px', flexWrap: 'wrap', flexShrink: 0,
-          borderBottom: '1px solid rgba(255,255,255,0.07)', paddingBottom: '0.875rem',
-        }}>
+        <div className="flex gap-2 flex-wrap shrink-0 border-b border-border pb-3">
           <button
             onClick={() => { setSelectedProjectId(null); setPageView('projects'); }}
-            style={{
-              padding: '5px 14px', borderRadius: '999px', fontSize: '0.8125rem', fontWeight: 500,
-              cursor: 'pointer', border: '1px solid',
-              borderColor: selectedProjectId === null ? '#6366f1' : 'rgba(255,255,255,0.1)',
-              background: selectedProjectId === null ? 'rgba(99,102,241,0.15)' : 'transparent',
-              color: selectedProjectId === null ? '#818cf8' : 'var(--text-secondary)',
-              transition: 'all 0.15s',
-            }}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-medium border transition-all ${selectedProjectId === null ? 'bg-primary-light border-primary/30 text-primary' : 'border-border text-text-secondary hover:bg-surface-tertiary'}`}
           >
             Tất cả dự án
           </button>
@@ -670,76 +346,66 @@ export function Activities() {
             <button
               key={p.id}
               onClick={() => setSelectedProjectId(p.id)}
-              style={{
-                padding: '5px 14px', borderRadius: '999px', fontSize: '0.8125rem', fontWeight: 500,
-                cursor: 'pointer', border: '1px solid',
-                borderColor: selectedProjectId === p.id ? '#6366f1' : 'rgba(255,255,255,0.1)',
-                background: selectedProjectId === p.id ? 'rgba(99,102,241,0.15)' : 'transparent',
-                color: selectedProjectId === p.id ? '#818cf8' : 'var(--text-secondary)',
-                transition: 'all 0.15s',
-              }}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-medium border transition-all ${selectedProjectId === p.id ? 'bg-primary-light border-primary/30 text-primary' : 'border-border text-text-secondary hover:bg-surface-tertiary'}`}
             >
-              {p.name}
-              <span style={{ marginLeft: '6px', fontSize: '0.6875rem', opacity: 0.6 }}>
-                {getProjectActivities(p.id).length}
-              </span>
+              {p.name} <span className="opacity-60 ml-1">{getProjectActivities(p.id).length}</span>
             </button>
           ))}
         </div>
       )}
 
-      {/* ── KANBAN BOARD ──────────────────────────────────── */}
       {pageView !== 'projects' && viewMode === 'board' && selectedProjectId !== null && (
-        <KanbanBoard
-          filteredActivities={filteredActivities}
-          allActivities={activities}
-          onOpenDetail={act => { setSelectedActivity(act); setModalMode('detail'); }}
-          onDragStart={onDragStart}
-          onDragOver={onDragOver}
-          onDragLeave={onDragLeave}
-          onDrop={onDrop}
-          dragOverCol={dragOverCol}
-          getProjectName={getProjectName}
-          showProjectName={selectedProjectId === null}
-          onViewAll={setViewAllStatus}
-        />
+        <DndContext collisionDetection={closestCorners} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+          <div className="flex-1 grid grid-cols-4 gap-4 overflow-auto pb-4 items-start">
+            {STATUSES.map(status => {
+              const colActs = filteredActivities.filter(a => a.status === status);
+              return (
+                <DroppableColumn key={status} status={status} count={colActs.length}>
+                  {colActs.map(act => (
+                    <DraggableCard key={act.id} activity={act} onOpen={a => { setSelectedActivity(a); setModalMode('detail'); }} getProjectName={getProjectName} showProject={selectedProjectId === null} />
+                  ))}
+                  {colActs.length === 0 && (
+                    <div className="p-6 text-center text-xs text-text-tertiary border-2 border-dashed border-border rounded-lg">
+                      Chưa có hoạt động
+                    </div>
+                  )}
+                </DroppableColumn>
+              );
+            })}
+          </div>
+          <DragOverlay>
+            {activeActivity ? (
+              <div className="p-3.5 bg-surface rounded-lg border-2 border-primary shadow-lg opacity-90">
+                <p className="text-sm font-semibold text-text-primary">{activeActivity.name}</p>
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       )}
 
-      {/* ── LIST VIEW ─────────────────────────────────────── */}
       {pageView !== 'projects' && viewMode === 'list' && selectedProjectId !== null && (
-        <div style={{ flex: 1, overflow: 'auto', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(30,41,59,0.6)' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+        <div className="flex-1 overflow-auto rounded-xl border border-border bg-surface">
+          <table className="w-full text-sm">
             <thead>
-              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', background: 'rgba(0,0,0,0.2)' }}>
+              <tr className="border-b border-border bg-surface-secondary">
                 {['Tên hoạt động', ...(selectedProjectId === null ? ['Dự án'] : []), 'Phụ trách', 'Deadline', 'Trạng thái'].map(h => (
-                  <th key={h} style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-secondary)', textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
+                  <th key={h} className="px-4 py-3 font-semibold text-text-secondary text-left text-xs">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filteredActivities.length === 0 ? (
-                <tr><td colSpan={5} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>Chưa có hoạt động nào trong dự án này.</td></tr>
+                <tr><td colSpan={5} className="px-4 py-8 text-center text-text-tertiary">Chưa có hoạt động nào.</td></tr>
               ) : filteredActivities.map(act => {
                 const computed = getDeadlineIndicator(act);
-                const overdue = computed.isOverdue;
                 return (
                   <tr key={act.id} onClick={() => { setSelectedActivity(act); setModalMode('detail'); }}
-                    style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', transition: 'background 0.15s' }}
-                    onMouseEnter={e => (e.currentTarget as HTMLTableRowElement).style.background = 'rgba(255,255,255,0.03)'}
-                    onMouseLeave={e => (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'}
-                  >
-                    <td style={{ padding: '12px 16px', fontWeight: 600 }}>{act.name}</td>
-                    {selectedProjectId === null && (
-                      <td style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>{getProjectName(act.projectId)}</td>
-                    )}
-                    <td style={{ padding: '12px 16px' }}>{act.assignee || '—'}</td>
-                    <td style={{ padding: '12px 16px', color: overdue ? '#f87171' : 'var(--text-secondary)' }}>{act.deadline || '—'}</td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
-                        <Badge status={act.status} />
-                        {computed.indicator && <span style={{ fontSize: '0.625rem', color: overdue ? '#f87171' : 'var(--text-secondary)' }}>({computed.indicator})</span>}
-                      </div>
-                    </td>
+                    className="border-b border-border hover:bg-surface-secondary cursor-pointer transition-colors">
+                    <td className="px-4 py-3 font-semibold text-text-primary">{act.name}</td>
+                    {selectedProjectId === null && <td className="px-4 py-3 text-text-secondary">{getProjectName(act.projectId)}</td>}
+                    <td className="px-4 py-3 text-text-secondary">{act.assignee || '—'}</td>
+                    <td className={`px-4 py-3 ${computed.isOverdue ? 'text-danger font-medium' : 'text-text-secondary'}`}>{act.deadline || '—'}</td>
+                    <td className="px-4 py-3"><Badge status={act.status} /></td>
                   </tr>
                 );
               })}
@@ -748,137 +414,29 @@ export function Activities() {
         </div>
       )}
 
-      {/* ── MODALS ────────────────────────────────────────── */}
       <Modal isOpen={modalMode === 'create'} onClose={() => setModalMode('none')} title="Tạo hoạt động mới">
-        <ActivityForm
-          initialData={selectedProjectId ? { projectId: selectedProjectId } as Partial<Activity> as Activity : undefined}
-          onSubmit={handleCreateActivity}
-          onCancel={() => setModalMode('none')}
-        />
+        <ActivityForm initialData={selectedProjectId ? { projectId: selectedProjectId } as Partial<Activity> as Activity : undefined} onSubmit={handleCreateActivity} onCancel={() => setModalMode('none')} />
       </Modal>
 
-      <Modal
-        isOpen={modalMode === 'detail' && !!selectedActivity}
-        onClose={() => { setModalMode('none'); setSelectedActivity(null); }}
-        title="Chi tiết hoạt động"
-      >
-        {selectedActivity && (
-          <ActivityDetail
-            activity={selectedActivity}
-            onEdit={() => setModalMode('edit')}
-            onDelete={() => handleDeleteActivity(selectedActivity.id)}
-            onClose={() => { setModalMode('none'); setSelectedActivity(null); }}
-          />
-        )}
+      <Modal isOpen={modalMode === 'detail' && !!selectedActivity} onClose={() => { setModalMode('none'); setSelectedActivity(null); }} title="Chi tiết hoạt động">
+        {selectedActivity && <ActivityDetail activity={selectedActivity} onEdit={() => setModalMode('edit')} onDelete={() => handleDeleteActivity(selectedActivity.id)} onClose={() => { setModalMode('none'); setSelectedActivity(null); }} />}
       </Modal>
 
-      <Modal
-        isOpen={modalMode === 'edit' && !!selectedActivity}
-        onClose={() => setModalMode('detail')}
-        title="Chỉnh sửa hoạt động"
-      >
-        {selectedActivity && (
-          <ActivityForm
-            initialData={selectedActivity}
-            onSubmit={handleUpdateActivity}
-            onCancel={() => setModalMode('detail')}
-          />
-        )}
+      <Modal isOpen={modalMode === 'edit' && !!selectedActivity} onClose={() => setModalMode('detail')} title="Chỉnh sửa hoạt động">
+        {selectedActivity && <ActivityForm initialData={selectedActivity} onSubmit={handleUpdateActivity} onCancel={() => setModalMode('detail')} />}
       </Modal>
 
-      <Modal
-        isOpen={modalMode === 'newProject' || modalMode === 'editProject'}
-        onClose={() => { setModalMode('none'); setEditingProject(null); }}
-        title={editingProject ? 'Chỉnh sửa dự án' : 'Tạo dự án mới'}
-      >
-        <ProjectForm
-          initialData={editingProject || undefined}
-          onSubmit={handleSaveProject}
-          onCancel={() => { setModalMode('none'); setEditingProject(null); }}
-        />
+      <Modal isOpen={modalMode === 'newProject' || modalMode === 'editProject'} onClose={() => { setModalMode('none'); setEditingProject(null); }} title={editingProject ? 'Chỉnh sửa dự án' : 'Tạo dự án mới'}>
+        <ProjectForm initialData={editingProject || undefined} onSubmit={handleSaveProject} onCancel={() => { setModalMode('none'); setEditingProject(null); }} />
       </Modal>
 
-      <Modal
-        isOpen={!!deletingProject}
-        onClose={() => setDeletingProject(null)}
-        title="Xóa dự án?"
-      >
+      <Modal isOpen={!!deletingProject} onClose={() => setDeletingProject(null)} title="Xóa dự án?">
         {deletingProject && (
-          <div style={{ padding: '0.5rem 0' }}>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', lineHeight: 1.6, marginBottom: '1.5rem' }}>
-              Tất cả hoạt động thuộc dự án này cũng sẽ bị xóa. Hành động này không thể hoàn tác.
-            </p>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-              <Button variant="secondary" onClick={() => setDeletingProject(null)}>
-                Hủy
-              </Button>
-              <Button
-                onClick={() => {
-                  handleDeleteProject(deletingProject.id);
-                  setDeletingProject(null);
-                }}
-                style={{ background: '#ef4444', borderColor: '#ef4444', color: '#fff' }}
-              >
-                Xóa dự án
-              </Button>
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      <Modal
-        isOpen={!!viewAllStatus}
-        onClose={() => setViewAllStatus(null)}
-        title={`${viewAllStatus} - ${filteredActivities.filter(a => a.status === viewAllStatus).length} hoạt động`}
-      >
-        {viewAllStatus && (
-          <div style={{ maxHeight: '65vh', overflowY: 'auto', padding: '0.5rem 0' }} className="hide-scrollbar">
-            <div style={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(30,41,59,0.4)', overflow: 'hidden' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', background: 'rgba(0,0,0,0.2)' }}>
-                    {['Tên hoạt động', ...(selectedProjectId === null ? ['Dự án'] : []), 'Phụ trách', 'Deadline', 'Trạng thái'].map(h => (
-                      <th key={h} style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--text-secondary)', textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredActivities.filter(a => a.status === viewAllStatus).map(act => {
-                    const computed = getDeadlineIndicator(act);
-                    const overdue = computed.isOverdue;
-                    return (
-                      <tr key={act.id} onClick={() => { setSelectedActivity(act); setModalMode('detail'); }}
-                        style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', transition: 'background 0.15s' }}
-                        onMouseEnter={e => (e.currentTarget as HTMLTableRowElement).style.background = 'rgba(255,255,255,0.03)'}
-                        onMouseLeave={e => (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'}
-                      >
-                        <td style={{ padding: '10px 14px', fontWeight: 600 }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <span>{act.name}</span>
-                            <span style={{ fontSize: '0.6875rem', fontWeight: 600, padding: '2px 6px', borderRadius: '4px', width: 'fit-content', ...PRIORITY_STYLE[act.priority] }}>
-                              {act.priority}
-                            </span>
-                          </div>
-                        </td>
-                        {selectedProjectId === null && (
-                          <td style={{ padding: '10px 14px', color: 'var(--text-secondary)' }}>{getProjectName(act.projectId)}</td>
-                        )}
-                        <td style={{ padding: '10px 14px' }}>{act.assignee || '—'}</td>
-                        <td style={{ padding: '10px 14px', color: overdue ? '#f87171' : 'var(--text-secondary)' }}>{act.deadline || '—'}</td>
-                        <td style={{ padding: '10px 14px' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
-                            <Badge status={act.status} />
-                            {computed.indicator && <span style={{ fontSize: '0.625rem', color: overdue ? '#f87171' : 'var(--text-secondary)' }}>({computed.indicator})</span>}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-              <Button variant="secondary" onClick={() => setViewAllStatus(null)}>Đóng</Button>
+          <div className="flex flex-col gap-4">
+            <p className="text-sm text-text-secondary leading-relaxed">Tất cả hoạt động thuộc dự án này cũng sẽ bị xóa. Hành động này không thể hoàn tác.</p>
+            <div className="flex justify-end gap-3">
+              <Button variant="secondary" onClick={() => setDeletingProject(null)}>Hủy</Button>
+              <Button variant="danger" onClick={() => { handleDeleteProject(deletingProject.id); setDeletingProject(null); }}>Xóa dự án</Button>
             </div>
           </div>
         )}

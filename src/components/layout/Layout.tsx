@@ -1,18 +1,17 @@
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
-import './Layout.css';
 
 export function Layout() {
   const { pathname } = useLocation();
   const isAiPage = pathname === '/ai-assistant';
 
   return (
-    <div className="layout">
+    <div className="flex h-screen overflow-hidden bg-surface-secondary">
       <Sidebar />
-      <div className="main-content">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <Topbar />
-        <main className={`page-content animate-fade-in${isAiPage ? ' ai-page' : ''}`}>
+        <main className={`flex-1 overflow-auto p-8 animate-fade-in ${isAiPage ? 'flex flex-col p-5' : ''}`}>
           <Outlet />
         </main>
       </div>
