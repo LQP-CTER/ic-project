@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useData } from '../context/DataContext';
 import { chatCompletion } from '../lib/cerebras';
 import { type Project } from '../data/mockData';
@@ -41,9 +41,11 @@ Quy tắc bắt buộc:
 - Nếu tạo email: gồm Subject và Body, tối đa 2 phiên bản.
 - Nếu tạo poster: gồm Concept, Headline, Subline, Body copy, CTA; tối đa 2 concept.
 - Nếu tạo kế hoạch: tối đa 5 bước, mỗi bước 1-2 dòng.
-- Nếu thiếu thông tin quan trọng, vẫn tạo bản nháp dùng placeholder; chỉ hỏi lại khi thật sự không thể làm.
+- Nếu người dùng chỉ chào hỏi hoặc nhập quá ngắn như "hi", "hello", "chào": không tạo nhiều phiên bản; chỉ chào lại một câu và hỏi họ muốn viết nội dung gì.
+- Nếu yêu cầu chưa phải một task truyền thông rõ ràng, hỏi lại tối đa 2 thông tin cần thiết thay vì tự tạo nội dung lan man.
+- Nếu thiếu vài thông tin phụ nhưng vẫn hiểu task chính, tạo bản nháp dùng placeholder ngắn như [deadline], [link], [người gửi].
 
-Định dạng ưu tiên: tiêu đề ngắn + nội dung copy-ready. Không trang trí quá mức.`;
+Định dạng ưu tiên: một câu trả lời gọn + nội dung copy-ready. Không trang trí quá mức.`;
 
 const INTENT_GUIDES: Record<string, { instruction: string; maxTokens: number; temperature: number }> = {
   gtalk: {
@@ -108,8 +110,9 @@ Yêu cầu định dạng cho Town Hall:
     temperature: 0.5,
     instruction: `
 Yêu cầu định dạng chung:
-- Trả lời gọn, copy-ready.
-- Nếu đưa nhiều lựa chọn, tối đa 3 lựa chọn.
+- Nếu input chỉ là lời chào hoặc chưa có yêu cầu truyền thông rõ ràng, trả lời đúng 1 đoạn ngắn để hỏi người dùng muốn viết gì.
+- Không tự tạo nhiều câu chào, không đưa nhiều lựa chọn nếu người dùng không yêu cầu.
+- Nếu là yêu cầu truyền thông rõ ràng, trả lời gọn và copy-ready.
 - Không bảng, không emoji, không code block, không phần hướng dẫn/kết luận không cần thiết.`,
   },
 };
@@ -126,10 +129,24 @@ function detectIntent(text: string, selectedTool: string | null): keyof typeof I
   return 'generic';
 }
 
+function isLowSignalPrompt(text: string) {
+  const normalized = text.trim().toLowerCase().replace(/[!?.。！？]+$/g, '');
+  const greetings = new Set(['hi', 'hello', 'hey', 'chào', 'xin chào', 'alo', 'hola']);
+  if (greetings.has(normalized)) return true;
+  const wordCount = normalized.split(/\s+/).filter(Boolean).length;
+  const hasCommunicationIntent = /(viết|soạn|tạo|lập|sửa|rewrite|email|gtalk|slack|teams|poster|kế hoạch|plan|khảo sát|survey|town hall|thông báo|nhắc|reminder)/i.test(text);
+  return wordCount <= 2 && !hasCommunicationIntent;
+}
+
+const LOW_SIGNAL_REPLY = 'Chào bạn. Bạn muốn mình hỗ trợ viết nội dung gì cho truyền thông nội bộ? Ví dụ: GTalk reminder, email thông báo, poster copy hoặc kế hoạch truyền thông.';
 function cleanupAiOutput(text: string) {
   return text
     .replace(/```[\s\S]*?```/g, block => block.replace(/```/g, '').trim())
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/^\s*>\s?/gm, '')
     .replace(/^\s*[-*_]{3,}\s*$/gm, '')
+    .replace(/[\u{1F300}-\u{1FAFF}]/gu, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
@@ -199,6 +216,19 @@ export function AIStudio() {
     const userMsg: Message = { id: crypto.randomUUID(), role: 'user', content: text, actionId: intent, timestamp: new Date() };
     setMessages(prev => [...prev, userMsg]);
     setInputValue('');
+
+    if (!selectedTool && isLowSignalPrompt(text)) {
+      const aiMsg: Message = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: LOW_SIGNAL_REPLY,
+        actionId: 'generic',
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      return;
+    }
+
     setIsGenerating(true);
 
     const ctx = buildContext();
