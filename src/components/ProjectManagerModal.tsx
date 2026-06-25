@@ -70,8 +70,8 @@ export function ProjectManagerModal() {
                 <td className="px-4 py-3 text-sm"><Badge status={p.status} /></td>
                 <td className="px-4 py-3">
                   <div className="flex gap-2">
-                    <button className="px-2 py-1 rounded text-xs font-medium text-text-secondary hover:bg-primary-light hover:text-primary transition-colors" onClick={() => setEditingProject(p)}>Edit</button>
-                    <button className="px-2 py-1 rounded text-xs font-medium text-text-secondary hover:bg-danger-light hover:text-danger transition-colors" onClick={() => handleDelete(p.id)}>Del</button>
+                    <button className="px-2 py-1 rounded text-xs font-medium text-text-secondary hover:bg-primary-light hover:text-primary transition-colors" onClick={() => setEditingProject(p)}>Sửa</button>
+                    <button className="px-2 py-1 rounded text-xs font-medium text-text-secondary hover:bg-danger-light hover:text-danger transition-colors" onClick={() => handleDelete(p.id)}>Xóa</button>
                   </div>
                 </td>
               </tr>

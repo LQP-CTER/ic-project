@@ -148,7 +148,7 @@ function ProjectCard({ project, acts, onOpen, onEdit, onDelete }: {
   });
 
   return (
-    <div className="bg-surface rounded-xl border border-border p-5 flex flex-col gap-4 transition-all duration-200 hover:shadow-md hover:border-primary/30">
+    <div className="professional-card rounded-2xl p-5 flex flex-col gap-4 transition-all duration-200 hover:shadow-md">
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <h3 className="text-sm font-bold text-text-primary mb-1">{project.name}</h3>
@@ -156,12 +156,12 @@ function ProjectCard({ project, acts, onOpen, onEdit, onDelete }: {
             <p className="text-xs text-text-secondary leading-relaxed line-clamp-2">{project.description}</p>
           )}
         </div>
-        <div className="flex gap-1 shrink-0">
-          <button onClick={e => { e.stopPropagation(); onEdit(); }} className="w-7 h-7 rounded-md text-text-tertiary hover:bg-primary-light hover:text-primary transition-colors text-xs font-medium">
-            Edit
+        <div className="flex gap-1.5 shrink-0">
+          <button onClick={e => { e.stopPropagation(); onEdit(); }} className="px-2.5 h-7 rounded-lg border border-border bg-white text-text-secondary hover:bg-primary-light hover:text-primary hover:border-primary/20 transition-colors text-xs font-bold">
+            Sửa
           </button>
-          <button onClick={e => { e.stopPropagation(); onDelete(); }} className="w-7 h-7 rounded-md text-text-tertiary hover:bg-danger-light hover:text-danger transition-colors text-xs font-medium">
-            Del
+          <button onClick={e => { e.stopPropagation(); onDelete(); }} className="px-2.5 h-7 rounded-lg border border-border bg-white text-text-secondary hover:bg-danger-light hover:text-danger hover:border-rose-200 transition-colors text-xs font-bold">
+            Xóa
           </button>
         </div>
       </div>
@@ -195,7 +195,7 @@ function ProjectCard({ project, acts, onOpen, onEdit, onDelete }: {
 
       <button
         onClick={onOpen}
-        className="w-full py-2 rounded-lg border border-primary/30 bg-primary-light text-primary text-sm font-semibold hover:bg-primary/10 transition-colors"
+        className="w-full py-2.5 rounded-xl border border-slate-200 bg-slate-950 text-white text-sm font-bold hover:bg-slate-800 transition-colors"
       >
         Xem chi tiết
       </button>
@@ -251,23 +251,23 @@ export function Activities() {
   const activeActivity = activeId ? activities.find(a => a.id === activeId) : null;
 
   return (
-    <div className="flex flex-col gap-5 h-full min-h-0">
-      <div className="flex items-center justify-between flex-wrap gap-3 shrink-0">
+    <div className="page-shell flex flex-col gap-5 h-full min-h-0">
+      <div className="page-header shrink-0 !mb-1">
         <div className="flex items-center gap-3">
           {pageView !== 'projects' && (
             <button
               onClick={() => { setPageView('projects'); setSelectedProjectId(null); }}
               className="px-3 py-1.5 rounded-lg border border-border bg-surface text-text-secondary text-sm hover:bg-surface-tertiary transition-colors"
             >
-              &larr; Dự án
+              Quay lại dự án
             </button>
           )}
           <div>
-            <h1 className="text-xl font-bold text-text-primary">
+            <h1 className="page-title !text-2xl">
               {pageView === 'projects' ? 'Quản lý hoạt động' : currentProject?.name || 'Tất cả dự án'}
             </h1>
-            <p className="text-xs text-text-secondary mt-0.5">
-              {pageView === 'projects' ? `${projects.length} dự án · ${activities.length} hoạt động` : `${filteredActivities.length} hoạt động trong dự án này`}
+            <p className="page-subtitle !text-xs !mt-1">
+              {pageView === 'projects' ? `${projects.length} dự án / ${activities.length} hoạt động` : `${filteredActivities.length} hoạt động trong dự án này`}
             </p>
           </div>
         </div>
@@ -384,8 +384,8 @@ export function Activities() {
       )}
 
       {pageView !== 'projects' && viewMode === 'list' && selectedProjectId !== null && (
-        <div className="flex-1 overflow-auto rounded-xl border border-border bg-surface">
-          <table className="w-full text-sm">
+        <div className="flex-1 overflow-auto table-wrap">
+          <table className="data-table">
             <thead>
               <tr className="border-b border-border bg-surface-secondary">
                 {['Tên hoạt động', ...(selectedProjectId === null ? ['Dự án'] : []), 'Phụ trách', 'Deadline', 'Trạng thái'].map(h => (

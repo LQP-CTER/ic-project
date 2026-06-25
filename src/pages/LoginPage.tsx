@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { BrandLogo } from '../components/brand/BrandLogo';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -17,32 +18,58 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface-secondary flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-surface rounded-2xl border border-border p-10 shadow-sm text-center">
-        <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center text-white font-bold text-xl mx-auto mb-6">
-          IC
-        </div>
-        <h1 className="text-2xl font-bold text-text-primary mb-2">IC Platform</h1>
-        <p className="text-sm text-text-secondary mb-8 leading-relaxed">
-          Nền tảng quản lý truyền thông nội bộ và gắn kết nhân viên
-        </p>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <input
-            type="email"
-            placeholder="Nhập email của bạn"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            required
-            className="w-full px-4 py-3 rounded-xl bg-surface-secondary border border-border text-sm text-text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
-          />
-          <button
-            type="submit"
-            disabled={loading || !email.trim()}
-            className="w-full px-6 py-3 bg-primary text-white rounded-xl font-semibold text-sm hover:bg-primary-hover transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? 'Đang xác thực...' : 'Đăng nhập'}
-          </button>
-        </form>
+    <div className="login-shell">
+      <div className="login-aura login-aura-one" />
+      <div className="login-aura login-aura-two" />
+
+      <div className="login-card-wrap">
+        <section className="login-hero-panel">
+          <BrandLogo size="lg" theme="dark" />
+          <div>
+            <p className="login-hero-kicker">Internal Communications Hub</p>
+            <h1 className="login-hero-title">Một workspace hiện đại cho toàn bộ hoạt động IC.</h1>
+            <p className="login-hero-text">Quản lý dự án, deadline, nội dung AI và thư viện truyền thông trên một hệ thống gọn gàng, đồng bộ bằng Google Sheets.</p>
+          </div>
+          <div className="login-feature-grid">
+            {['Project command', 'AI content studio', 'Workflow templates'].map(item => (
+              <div key={item} className="login-feature-card">
+                <span>{item}</span>
+                <small>Ready</small>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="login-form-panel">
+          <div className="login-form-header">
+            <BrandLogo size="md" theme="light" />
+            <p className="eyebrow">Secure access</p>
+            <h2 className="login-form-title">Đăng nhập</h2>
+            <p className="login-form-subtitle">Sử dụng email đã được cấp quyền trong Google Sheet để truy cập IC Platform.</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="login-form">
+            <label className="login-field">
+              <span>Email công việc</span>
+              <input
+                type="email"
+                placeholder="phatlq@ghn.vn"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+                className="form-control"
+              />
+            </label>
+            <button type="submit" disabled={loading || !email.trim()} className="login-submit">
+              {loading ? 'Đang xác thực...' : 'Tiếp tục'}
+            </button>
+          </form>
+
+          <div className="login-note">
+            <strong>Quyền truy cập được kiểm tra qua Google Sheets.</strong>
+            <span>Nếu không đăng nhập được, hãy thêm email vào tab Users.</span>
+          </div>
+        </section>
       </div>
     </div>
   );

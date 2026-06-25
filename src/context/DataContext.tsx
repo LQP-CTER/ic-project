@@ -1,6 +1,16 @@
-/* eslint-disable react-refresh/only-export-components */
+﻿/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
-import { initialProjects, initialActivities, initialContents, type Project, type Activity, type Content } from '../data/mockData';
+import {
+  initialProjects,
+  initialActivities,
+  initialContents,
+  initialUsers,
+  type Project,
+  type Activity,
+  type Content,
+  type UserRecord,
+} from '../data/mockData';
+import { WORKFLOW_TEMPLATES, type WorkflowTemplate, type WorkflowStep } from '../data/workflowTemplates';
 import { sheetsApi } from '../lib/sheetsApi';
 import toast from 'react-hot-toast';
 
@@ -8,12 +18,16 @@ const SHEETS = {
   PROJECTS: 'Projects',
   ACTIVITIES: 'Activities',
   CONTENTS: 'Contents',
+  USERS: 'Users',
+  WORKFLOW_TEMPLATES: 'WorkflowTemplates',
 };
 
 interface DataContextType {
   projects: Project[];
   activities: Activity[];
   contents: Content[];
+  users: UserRecord[];
+  workflowTemplates: WorkflowTemplate[];
   loading: boolean;
   addProject: (p: Omit<Project, 'id'>) => Promise<string>;
   updateProject: (id: string, p: Partial<Project>) => Promise<void>;
@@ -21,8 +35,15 @@ interface DataContextType {
   addActivity: (a: Omit<Activity, 'id'>) => Promise<string>;
   updateActivity: (id: string, a: Partial<Activity>) => Promise<void>;
   deleteActivity: (id: string) => Promise<void>;
-  addContent: (c: Omit<Content, 'id'>) => Promise<void>;
+  addContent: (c: Omit<Content, 'id'>) => Promise<string>;
+  updateContent: (id: string, c: Partial<Content>) => Promise<void>;
   deleteContent: (id: string) => Promise<void>;
+  addUser: (u: Omit<UserRecord, 'id'>) => Promise<string>;
+  updateUser: (id: string, u: Partial<UserRecord>) => Promise<void>;
+  deleteUser: (id: string) => Promise<void>;
+  addWorkflowTemplate: (template: Omit<WorkflowTemplate, 'id'>) => Promise<string>;
+  updateWorkflowTemplate: (id: string, template: Partial<WorkflowTemplate>) => Promise<void>;
+  deleteWorkflowTemplate: (id: string) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -36,10 +57,55 @@ export const useData = () => {
 const API_URL = import.meta.env.VITE_GOOGLE_SHEETS_API_URL?.trim();
 const useApi = !!API_URL;
 
+function normalizeEmail(value: string) {
+  return value.toLowerCase().trim();
+}
+
+function normalizeUser(rawUser: Partial<UserRecord>): UserRecord {
+  const email = normalizeEmail(String(rawUser.email || ''));
+  return {
+    id: rawUser.id ? String(rawUser.id) : email,
+    email,
+    name: String(rawUser.name || email.split('@')[0] || 'Người dùng'),
+    role: rawUser.role === 'admin' ? 'admin' : 'member',
+  };
+}
+
+function parseTemplateSteps(value: unknown): WorkflowStep[] {
+  if (Array.isArray(value)) return value as WorkflowStep[];
+  if (typeof value !== 'string' || !value.trim()) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed as WorkflowStep[] : [];
+  } catch {
+    return [];
+  }
+}
+
+function normalizeWorkflowTemplate(rawTemplate: Partial<WorkflowTemplate> & { steps?: unknown }): WorkflowTemplate {
+  return {
+    id: String(rawTemplate.id || `wf_${Math.random().toString(36).slice(2, 9)}`),
+    name: String(rawTemplate.name || 'Template mới'),
+    description: String(rawTemplate.description || ''),
+    category: String(rawTemplate.category || 'Truyền thông nội bộ'),
+    estimatedWeeks: Number(rawTemplate.estimatedWeeks || 1),
+    steps: parseTemplateSteps(rawTemplate.steps),
+  };
+}
+
+function serializeWorkflowTemplate(template: WorkflowTemplate | Partial<WorkflowTemplate>) {
+  return {
+    ...template,
+    steps: JSON.stringify(template.steps || []),
+  };
+}
+
 export function DataProvider({ children }: { children: ReactNode }) {
   const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [activities, setActivities] = useState<Activity[]>(initialActivities);
   const [contents, setContents] = useState<Content[]>(initialContents);
+  const [users, setUsers] = useState<UserRecord[]>(initialUsers);
+  const [workflowTemplates, setWorkflowTemplates] = useState<WorkflowTemplate[]>(WORKFLOW_TEMPLATES);
   const [loading, setLoading] = useState(useApi);
 
   useEffect(() => {
@@ -49,6 +115,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
         if (data.projects) setProjects(data.projects);
         if (data.activities) setActivities(data.activities);
         if (data.contents) setContents(data.contents);
+        if (data.users) setUsers(data.users.map(normalizeUser).filter((user: UserRecord) => user.email));
+        if (Array.isArray(data.workflowTemplates) && data.workflowTemplates.length > 0) {
+          setWorkflowTemplates(data.workflowTemplates.map(normalizeWorkflowTemplate));
+        }
       })
       .catch(err => {
         console.error('Failed to load data from sheets:', err);
@@ -63,7 +133,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setProjects(prev => [...prev, newProject]);
     if (useApi) {
       try {
-        // Persist the client ID so activities can safely reference this project.
         await sheetsApi.add(SHEETS.PROJECTS, newProject);
       } catch {
         setProjects(prev => prev.filter(project => project.id !== id));
@@ -144,27 +213,155 @@ export function DataProvider({ children }: { children: ReactNode }) {
       } catch {
         setContents(prev => prev.filter(content => content.id !== id));
         toast.error('Không thể lưu nội dung');
+        throw new Error('Failed to add content');
       }
     }
+    return id;
   }, []);
 
+  const updateContent = useCallback(async (id: string, updates: Partial<Content>) => {
+    const previousContents = contents;
+    setContents(prev => prev.map(content => content.id === id ? { ...content, ...updates } : content));
+    if (useApi) {
+      try {
+        await sheetsApi.update(SHEETS.CONTENTS, id, updates);
+      } catch {
+        setContents(previousContents);
+        toast.error('Không thể cập nhật nội dung');
+        throw new Error('Failed to update content');
+      }
+    }
+  }, [contents]);
+
   const deleteContent = useCallback(async (id: string) => {
+    const previousContents = contents;
     setContents(prev => prev.filter(c => c.id !== id));
     if (useApi) {
       try {
         await sheetsApi.delete(SHEETS.CONTENTS, id);
       } catch {
+        setContents(previousContents);
         toast.error('Không thể xóa nội dung');
+        throw new Error('Failed to delete content');
       }
     }
+  }, [contents]);
+
+  const addUser = useCallback(async (u: Omit<UserRecord, 'id'>) => {
+    const newUser = normalizeUser({ ...u, id: normalizeEmail(u.email) });
+    const previousUsers = users;
+
+    if (!newUser.email) throw new Error('Email is required');
+    if (users.some(user => user.email === newUser.email)) {
+      toast.error('Email này đã có quyền truy cập');
+      throw new Error('Duplicate user email');
+    }
+
+    setUsers(prev => [...prev, newUser]);
+    if (useApi) {
+      try {
+        await sheetsApi.add(SHEETS.USERS, newUser);
+      } catch {
+        setUsers(previousUsers);
+        toast.error('Không thể thêm người dùng');
+        throw new Error('Failed to add user');
+      }
+    }
+    return newUser.id;
+  }, [users]);
+
+  const updateUser = useCallback(async (id: string, updates: Partial<UserRecord>) => {
+    const nextId = updates.email ? normalizeEmail(updates.email) : id;
+    const normalizedUpdates = {
+      ...updates,
+      ...(updates.email ? { email: normalizeEmail(updates.email), id: nextId } : {}),
+      ...(updates.role ? { role: updates.role === 'admin' ? 'admin' as const : 'member' as const } : {}),
+    };
+    const previousUsers = users;
+
+    if (normalizedUpdates.email && users.some(user => user.id !== id && user.email === normalizedUpdates.email)) {
+      toast.error('Email này đã có quyền truy cập');
+      throw new Error('Duplicate user email');
+    }
+
+    setUsers(prev => prev.map(user => user.id === id ? normalizeUser({ ...user, ...normalizedUpdates, id: nextId }) : user));
+    if (useApi) {
+      try {
+        await sheetsApi.update(SHEETS.USERS, id, normalizedUpdates);
+      } catch {
+        setUsers(previousUsers);
+        toast.error('Không thể cập nhật người dùng');
+        throw new Error('Failed to update user');
+      }
+    }
+  }, [users]);
+
+  const deleteUser = useCallback(async (id: string) => {
+    const previousUsers = users;
+    setUsers(prev => prev.filter(user => user.id !== id));
+    if (useApi) {
+      try {
+        await sheetsApi.delete(SHEETS.USERS, id);
+      } catch {
+        setUsers(previousUsers);
+        toast.error('Không thể xóa người dùng');
+        throw new Error('Failed to delete user');
+      }
+    }
+  }, [users]);
+
+  const addWorkflowTemplate = useCallback(async (template: Omit<WorkflowTemplate, 'id'>) => {
+    const id = 'wf_' + Math.random().toString(36).substr(2, 9);
+    const newTemplate = normalizeWorkflowTemplate({ ...template, id });
+    setWorkflowTemplates(prev => [...prev, newTemplate]);
+    if (useApi) {
+      try {
+        await sheetsApi.add(SHEETS.WORKFLOW_TEMPLATES, serializeWorkflowTemplate(newTemplate));
+      } catch {
+        setWorkflowTemplates(prev => prev.filter(item => item.id !== id));
+        toast.error('Không thể lưu workflow template');
+        throw new Error('Failed to add workflow template');
+      }
+    }
+    return id;
   }, []);
+
+  const updateWorkflowTemplate = useCallback(async (id: string, updates: Partial<WorkflowTemplate>) => {
+    const previousTemplates = workflowTemplates;
+    setWorkflowTemplates(prev => prev.map(template => template.id === id ? normalizeWorkflowTemplate({ ...template, ...updates, id }) : template));
+    if (useApi) {
+      try {
+        await sheetsApi.update(SHEETS.WORKFLOW_TEMPLATES, id, serializeWorkflowTemplate(updates));
+      } catch {
+        setWorkflowTemplates(previousTemplates);
+        toast.error('Không thể cập nhật workflow template');
+        throw new Error('Failed to update workflow template');
+      }
+    }
+  }, [workflowTemplates]);
+
+  const deleteWorkflowTemplate = useCallback(async (id: string) => {
+    const previousTemplates = workflowTemplates;
+    setWorkflowTemplates(prev => prev.filter(template => template.id !== id));
+    if (useApi) {
+      try {
+        await sheetsApi.delete(SHEETS.WORKFLOW_TEMPLATES, id);
+      } catch {
+        setWorkflowTemplates(previousTemplates);
+        toast.error('Không thể xóa workflow template');
+        throw new Error('Failed to delete workflow template');
+      }
+    }
+  }, [workflowTemplates]);
 
   return (
     <DataContext.Provider value={{
-      projects, activities, contents, loading,
+      projects, activities, contents, users, workflowTemplates, loading,
       addProject, updateProject, deleteProject,
       addActivity, updateActivity, deleteActivity,
-      addContent, deleteContent,
+      addContent, updateContent, deleteContent,
+      addUser, updateUser, deleteUser,
+      addWorkflowTemplate, updateWorkflowTemplate, deleteWorkflowTemplate,
     }}>
       {children}
     </DataContext.Provider>

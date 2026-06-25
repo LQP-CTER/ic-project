@@ -11,13 +11,13 @@ interface CardProps {
 export function Card({ children, className = '', title, action, onClick }: CardProps) {
   return (
     <div
-      className={`bg-surface rounded-xl border border-border p-5 shadow-sm ${onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : ''} ${className}`}
+      className={`professional-card rounded-2xl p-5 ${onClick ? 'cursor-pointer hover:shadow-md transition-all' : ''} ${className}`}
       onClick={onClick}
     >
       {(title || action) && (
-        <div className="flex items-center justify-between mb-4">
-          {title && <h3 className="text-base font-semibold text-text-primary">{title}</h3>}
-          {action && <div>{action}</div>}
+        <div className="flex items-start justify-between gap-4 mb-4">
+          {title && <h3 className="text-base font-extrabold tracking-tight text-text-primary">{title}</h3>}
+          {action && <div className="shrink-0">{action}</div>}
         </div>
       )}
       {children}

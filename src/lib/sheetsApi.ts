@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_GOOGLE_SHEETS_API_URL?.trim();
+﻿const API_URL = import.meta.env.VITE_GOOGLE_SHEETS_API_URL?.trim();
 
 function requireApiUrl() {
   if (!API_URL) throw new Error('VITE_GOOGLE_SHEETS_API_URL is not configured');
@@ -35,10 +35,10 @@ export const sheetsApi = {
 
   checkUser: (email: string) => fetchApi({ action: 'checkUser', email }),
 
-  add: (sheet: string, data: Record<string, unknown>) =>
+  add: (sheet: string, data: object) =>
     postApi({ action: 'add', sheet, data }),
 
-  update: (sheet: string, id: string, data: Record<string, unknown>) =>
+  update: (sheet: string, id: string, data: object) =>
     postApi({ action: 'update', sheet, id, data }),
 
   delete: (sheet: string, id: string) =>

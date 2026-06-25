@@ -1,7 +1,9 @@
+﻿import { useMemo, useState } from 'react';
 import { type Activity } from '../data/mockData';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { useData } from '../context/DataContext';
+import { parseChecklist, serializeChecklist, type ChecklistItem } from '../lib/checklist';
 
 interface ActivityDetailProps {
   activity: Activity;
@@ -33,9 +35,34 @@ function InfoRow({ label, value, isLink }: { label: string; value?: string; isLi
 }
 
 export function ActivityDetail({ activity, onEdit, onDelete, onClose }: ActivityDetailProps) {
-  const { projects } = useData();
+  const { projects, updateActivity } = useData();
+  const [checklist, setChecklist] = useState<ChecklistItem[]>(() => parseChecklist(activity.checklist));
+  const [newItemTitle, setNewItemTitle] = useState('');
   const projectName = projects.find(p => p.id === activity.projectId)?.name || 'Unknown Project';
   const priorityStyle = PRIORITY_STYLE[activity.priority] || PRIORITY_STYLE['Medium'];
+  const checklistDone = useMemo(() => checklist.filter(item => item.done).length, [checklist]);
+  const checklistPercent = checklist.length === 0 ? 0 : Math.round((checklistDone / checklist.length) * 100);
+
+  const persistChecklist = (nextItems: ChecklistItem[]) => {
+    setChecklist(nextItems);
+    updateActivity(activity.id, { checklist: serializeChecklist(nextItems) });
+  };
+
+  const addChecklistItem = () => {
+    const title = newItemTitle.trim();
+    if (!title) return;
+    const nextItems = [...checklist, { id: `item_${Date.now()}`, title, done: false }];
+    setNewItemTitle('');
+    persistChecklist(nextItems);
+  };
+
+  const toggleChecklistItem = (id: string) => {
+    persistChecklist(checklist.map(item => item.id === id ? { ...item, done: !item.done } : item));
+  };
+
+  const deleteChecklistItem = (id: string) => {
+    persistChecklist(checklist.filter(item => item.id !== id));
+  };
 
   const handleDelete = () => {
     if (confirm(`Xóa hoạt động "${activity.name}"?`)) {
@@ -67,12 +94,50 @@ export function ActivityDetail({ activity, onEdit, onDelete, onClose }: Activity
         <Badge status={activity.status} />
       </div>
 
+      <section className="activity-checklist-box">
+        <div className="activity-checklist-head">
+          <div>
+            <p className="eyebrow">Checklist</p>
+            <h3>Subtasks</h3>
+          </div>
+          <span>{checklistDone}/{checklist.length} xong</span>
+        </div>
+        <div className="activity-checklist-progress"><span style={{ width: `${checklistPercent}%` }} /></div>
+
+        <div className="activity-checklist-list">
+          {checklist.length === 0 ? (
+            <p className="activity-checklist-empty">Chưa có subtask. Thêm checklist để chia nhỏ việc cần làm.</p>
+          ) : checklist.map(item => (
+            <div key={item.id} className="activity-checklist-item">
+              <label>
+                <input type="checkbox" checked={item.done} onChange={() => toggleChecklistItem(item.id)} />
+                <span className={item.done ? 'done' : ''}>{item.title}</span>
+              </label>
+              <button onClick={() => deleteChecklistItem(item.id)}>Xóa</button>
+            </div>
+          ))}
+        </div>
+
+        <div className="activity-checklist-add">
+          <input
+            value={newItemTitle}
+            onChange={event => setNewItemTitle(event.target.value)}
+            onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); addChecklistItem(); } }}
+            placeholder="Thêm subtask mới..."
+          />
+          <Button size="sm" type="button" onClick={addChecklistItem}>Thêm</Button>
+        </div>
+      </section>
+
       <div className="rounded-lg bg-surface-secondary border border-border px-4">
         <InfoRow label="Người phụ trách" value={activity.assignee} />
         <InfoRow label="Ngày bắt đầu" value={activity.startDate} />
         <InfoRow label="Deadline" value={activity.deadline} />
         <InfoRow label="Kênh truyền thông" value={activity.channel} />
         <InfoRow label="Tài liệu đính kèm" value={activity.attachmentLink} isLink />
+        <InfoRow label="Người duyệt" value={activity.approver} />
+        <InfoRow label="Hạn review" value={activity.reviewDueDate} />
+        <InfoRow label="Ghi chú review" value={activity.reviewNotes} />
         <InfoRow label="Ghi chú" value={activity.notes} />
       </div>
 

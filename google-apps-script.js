@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Google Apps Script - IC Platform Backend
  * 
  * SETUP:
@@ -15,13 +15,17 @@ const SHEET_NAMES = {
   ACTIVITIES: 'Activities',
   CONTENTS: 'Contents',
   USERS: 'Users',
+  WORKFLOW_TEMPLATES: 'WorkflowTemplates',
 };
 
 const SHEET_SCHEMAS = {
-  [SHEET_NAMES.PROJECTS]: ['id', 'name', 'description', 'assignee', 'startDate', 'deadline', 'status', 'notes'],
-  [SHEET_NAMES.ACTIVITIES]: ['id', 'projectId', 'name', 'description', 'assignee', 'startDate', 'deadline', 'priority', 'status', 'channel', 'attachmentLink', 'notes'],
-  [SHEET_NAMES.CONTENTS]: ['id', 'title', 'contentType', 'projectId', 'projectName', 'activityId', 'activityName', 'prompt', 'content', 'createdAt'],
+  [SHEET_NAMES.PROJECTS]: ['id', 'name', 'description', 'assignee', 'startDate', 'deadline', 'status', 'notes', 'objective', 'audience', 'keyMessage', 'cta', 'channels', 'toneOfVoice', 'stakeholder', 'successMetric', 'mandatoryInfo'],
+  [SHEET_NAMES.ACTIVITIES]: ['id', 'projectId', 'name', 'description', 'assignee', 'startDate', 'deadline', 'priority', 'status', 'channel', 'attachmentLink', 'notes', 'approver', 'reviewDueDate', 'reviewNotes', 'checklist'],
+  [SHEET_NAMES.CONTENTS]: ['id', 'title', 'contentType', 'projectId', 'projectName', 'activityId', 'activityName', 'prompt', 'content', 'createdAt', 'status', 'approver', 'reviewNotes', 'publishedAt'],
+  // Users deliberately keeps the original email/name/role schema so existing sheets do not break.
+  // CRUD uses email as the stable identifier when an id column is not present.
   [SHEET_NAMES.USERS]: ['email', 'name', 'role'],
+  [SHEET_NAMES.WORKFLOW_TEMPLATES]: ['id', 'name', 'description', 'category', 'estimatedWeeks', 'steps'],
 };
 
 /**
@@ -60,6 +64,7 @@ function ensureSheet(sheetName, headers) {
     .setFontColor('#ffffff');
   sheet.setFrozenRows(1);
 }
+
 function doGet(e) {
   const action = e.parameter.action;
   const sheet = e.parameter.sheet;
@@ -108,6 +113,8 @@ function getAllData() {
     projects: getSheetData(SHEET_NAMES.PROJECTS),
     activities: getSheetData(SHEET_NAMES.ACTIVITIES),
     contents: getSheetData(SHEET_NAMES.CONTENTS),
+    users: getSheetData(SHEET_NAMES.USERS),
+    workflowTemplates: getSheetData(SHEET_NAMES.WORKFLOW_TEMPLATES),
   };
 }
 
@@ -130,9 +137,33 @@ function getSheetData(sheetName) {
       }
       row[headers[j]] = val;
     }
+    if (sheetName === SHEET_NAMES.USERS && !row.id && row.email) {
+      row.id = normalizeEmail(row.email);
+    }
     rows.push(row);
   }
   return rows;
+}
+
+function getIdentityConfig(sheetName, headers) {
+  const idCol = headers.indexOf('id');
+  if (idCol !== -1) return { field: 'id', column: idCol };
+
+  if (sheetName === SHEET_NAMES.USERS) {
+    const emailCol = headers.indexOf('email');
+    if (emailCol !== -1) return { field: 'email', column: emailCol };
+  }
+
+  throw new Error('Sheet must contain an id column: ' + sheetName);
+}
+
+function normalizeIdentity(field, value) {
+  if (field === 'email') return normalizeEmail(value);
+  return String(value || '').trim();
+}
+
+function normalizeEmail(value) {
+  return String(value || '').toLowerCase().trim();
 }
 
 function addRow(sheetName, data) {
@@ -140,24 +171,27 @@ function addRow(sheetName, data) {
   if (!sheet) throw new Error('Sheet not found: ' + sheetName);
 
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const id = data.id ? String(data.id) : generateId(sheetName);
-  const idColumn = headers.indexOf('id');
-  if (idColumn === -1) throw new Error('Sheet must contain an id column: ' + sheetName);
-  const existingIds = sheet.getLastRow() > 1
-    ? sheet.getRange(2, idColumn + 1, sheet.getLastRow() - 1, 1).getValues().flat()
+  const identity = getIdentityConfig(sheetName, headers);
+  const generatedId = data.id ? String(data.id) : generateId(sheetName);
+  const rawIdentity = identity.field === 'email' ? data.email : generatedId;
+  const identityValue = normalizeIdentity(identity.field, rawIdentity);
+  if (!identityValue) throw new Error('Missing required identity field: ' + identity.field);
+
+  const existingValues = sheet.getLastRow() > 1
+    ? sheet.getRange(2, identity.column + 1, sheet.getLastRow() - 1, 1).getValues().flat()
     : [];
-  if (existingIds.some(existingId => String(existingId) === id)) {
-    throw new Error('Duplicate ID: ' + id);
+  if (existingValues.some(existingValue => normalizeIdentity(identity.field, existingValue) === identityValue)) {
+    throw new Error('Duplicate ' + identity.field + ': ' + identityValue);
   }
 
   const row = headers.map(h => {
-    if (h === 'id') return id;
+    if (h === 'id') return generatedId;
     if (h === 'createdAt') return new Date().toISOString();
     return data[h] !== undefined ? data[h] : '';
   });
 
   sheet.appendRow(row);
-  return { success: true, id: id };
+  return { success: true, id: identity.field === 'email' ? identityValue : generatedId };
 }
 
 function updateRow(sheetName, id, data) {
@@ -166,10 +200,11 @@ function updateRow(sheetName, id, data) {
 
   const allData = sheet.getDataRange().getValues();
   const headers = allData[0];
-  const idCol = headers.indexOf('id');
+  const identity = getIdentityConfig(sheetName, headers);
+  const targetIdentity = normalizeIdentity(identity.field, id);
 
   for (let i = 1; i < allData.length; i++) {
-    if (String(allData[i][idCol]) === String(id)) {
+    if (normalizeIdentity(identity.field, allData[i][identity.column]) === targetIdentity) {
       for (const [key, value] of Object.entries(data)) {
         const colIdx = headers.indexOf(key);
         if (colIdx !== -1) {
@@ -188,10 +223,11 @@ function deleteRow(sheetName, id) {
 
   const allData = sheet.getDataRange().getValues();
   const headers = allData[0];
-  const idCol = headers.indexOf('id');
+  const identity = getIdentityConfig(sheetName, headers);
+  const targetIdentity = normalizeIdentity(identity.field, id);
 
   for (let i = 1; i < allData.length; i++) {
-    if (String(allData[i][idCol]) === String(id)) {
+    if (normalizeIdentity(identity.field, allData[i][identity.column]) === targetIdentity) {
       sheet.deleteRow(i + 1);
       return { success: true };
     }
@@ -223,7 +259,15 @@ function deleteRelatedRows(targetSheetName, foreignKeyField, foreignKeyValue) {
 }
 
 function generateId(sheetName) {
-  const prefix = sheetName === SHEET_NAMES.PROJECTS ? 'p' : sheetName === SHEET_NAMES.ACTIVITIES ? 'a' : 'c';
+  const prefix = sheetName === SHEET_NAMES.PROJECTS
+    ? 'p'
+    : sheetName === SHEET_NAMES.ACTIVITIES
+      ? 'a'
+      : sheetName === SHEET_NAMES.USERS
+        ? 'u'
+        : sheetName === SHEET_NAMES.WORKFLOW_TEMPLATES
+          ? 'wf'
+          : 'c';
   return prefix + '_' + Utilities.getUuid().substring(0, 9);
 }
 
@@ -242,17 +286,18 @@ function checkUser(email) {
   const emailCol = headers.indexOf('email');
   const nameCol = headers.indexOf('name');
   const roleCol = headers.indexOf('role');
+  if (emailCol === -1) return { authorized: false, error: 'Users sheet must contain an email column' };
 
-  const normalizedEmail = email.toLowerCase().trim();
+  const normalizedEmail = normalizeEmail(email);
 
   for (let i = 1; i < data.length; i++) {
-    if (String(data[i][emailCol]).toLowerCase().trim() === normalizedEmail) {
+    if (normalizeEmail(data[i][emailCol]) === normalizedEmail) {
       return {
         authorized: true,
         user: {
           email: data[i][emailCol],
-          name: data[i][nameCol],
-          role: data[i][roleCol],
+          name: nameCol !== -1 ? data[i][nameCol] : data[i][emailCol],
+          role: roleCol !== -1 ? data[i][roleCol] : 'member',
         }
       };
     }
@@ -260,3 +305,5 @@ function checkUser(email) {
 
   return { authorized: false };
 }
+
+

@@ -1,30 +1,141 @@
-import { Card } from '../components/ui/Card';
+﻿import type { CSSProperties } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Badge } from '../components/ui/Badge';
+import { Button } from '../components/ui/Button';
 import { useData } from '../context/DataContext';
-import { getDeadlineIndicator } from '../data/mockData';
+import { getDeadlineIndicator, type Activity } from '../data/mockData';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
+type FocusItem = {
+  id: string;
+  type: 'activity' | 'content';
+  title: string;
+  context: string;
+  owner: string;
+  due: string;
+  reason: string;
+  tone: 'danger' | 'warning' | 'review' | 'muted' | 'success';
+};
+
+function isDone(activity: Activity) {
+  return activity.status === 'Hoàn thành' || activity.status === 'Kết thúc';
+}
+
+function formatDate(value?: string) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString('vi-VN');
+}
+
+function focusToneClass(tone: FocusItem['tone']) {
+  if (tone === 'danger') return 'focus-tone-danger';
+  if (tone === 'warning') return 'focus-tone-warning';
+  if (tone === 'review') return 'focus-tone-review';
+  if (tone === 'success') return 'focus-tone-success';
+  return 'focus-tone-muted';
+}
+
 export function Dashboard() {
-  const { activities, projects } = useData();
+  const navigate = useNavigate();
+  const { activities, projects, contents } = useData();
 
   const total = activities.length;
-  const completed = activities.filter(a => a.status === 'Hoàn thành' || a.status === 'Kết thúc').length;
+  const completed = activities.filter(isDone).length;
   const inProgress = activities.filter(a => a.status === 'Đang thực hiện').length;
   const waiting = activities.filter(a => a.status === 'Chờ duyệt').length;
   const notStarted = activities.filter(a => a.status === 'Chưa bắt đầu').length;
+  const completionRate = total === 0 ? 0 : Math.round((completed / total) * 100);
 
   const today = new Date().toISOString().split('T')[0];
+  const twoDaysLater = new Date(new Date().getTime() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   const threeDaysLater = new Date(new Date().getTime() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-
   const overdue = activities.filter(a => getDeadlineIndicator(a).isOverdue).length;
-  const dueSoon = activities.filter(a => a.deadline && a.deadline >= today && a.deadline <= threeDaysLater && a.status !== 'Hoàn thành' && a.status !== 'Kết thúc').length;
+  const dueSoon = activities.filter(a => a.deadline && a.deadline >= today && a.deadline <= threeDaysLater && !isDone(a)).length;
+  const approvedUnpublished = contents.filter(c => (c.status || 'Draft') === 'Approved' && !c.publishedAt).length;
 
   const stats = [
-    { label: 'Tổng số hoạt động', value: total, color: 'bg-primary-light text-primary' },
-    { label: 'Sắp đến hạn', value: dueSoon, color: 'bg-warning-light text-warning' },
-    { label: 'Đang thực hiện', value: inProgress, color: 'bg-primary-light text-primary-600' },
-    { label: 'Quá hạn', value: overdue, color: 'bg-danger-light text-danger' },
-    { label: 'Hoàn thành', value: completed, color: 'bg-success-light text-success' },
+    { label: 'Tổng hoạt động', value: total, caption: `${projects.length} dự án đang theo dõi`, tone: '#101828', accent: '#64748b' },
+    { label: 'Hoàn thành', value: completed, caption: `${completionRate}% completion rate`, tone: '#047857', accent: '#10b981' },
+    { label: 'Đang thực hiện', value: inProgress, caption: 'Cần theo sát tiến độ', tone: '#4f46e5', accent: '#6366f1' },
+    { label: 'Sắp đến hạn', value: dueSoon, caption: 'Trong 3 ngày tới', tone: '#b45309', accent: '#f59e0b' },
+    { label: 'Quá hạn', value: overdue, caption: 'Cần xử lý ưu tiên', tone: '#be123c', accent: '#e11d48' },
   ];
+
+  const startActions = [
+    {
+      title: 'Tạo chiến dịch bài bản',
+      desc: 'Dùng workflow template để tạo project và activity nhanh.',
+      action: 'Mở Workflow',
+      onClick: () => navigate('/workflow'),
+    },
+    {
+      title: 'Viết nội dung gấp',
+      desc: 'Vào AI Assistant, tạo nhanh copy và lưu vào Library.',
+      action: 'Mở AI Assistant',
+      onClick: () => navigate('/ai-assistant'),
+    },
+    {
+      title: 'Quản lý timeline/task',
+      desc: 'Tạo project, chia activity, owner, deadline và status.',
+      action: 'Mở Hoạt động',
+      onClick: () => navigate('/activities'),
+    },
+    {
+      title: 'Lưu/chỉnh nội dung có sẵn',
+      desc: 'Thêm, sửa, copy và theo dõi lifecycle nội dung.',
+      action: 'Mở Thư viện',
+      onClick: () => navigate('/library'),
+    },
+  ];
+
+  const getProjectName = (projectId: string) => projects.find(p => p.id === projectId)?.name || 'Không có dự án';
+
+  const activityFocusItems: FocusItem[] = activities
+    .filter(activity => !isDone(activity))
+    .flatMap(activity => {
+      const items: FocusItem[] = [];
+      const indicator = getDeadlineIndicator(activity);
+      const base = {
+        id: activity.id,
+        type: 'activity' as const,
+        title: activity.name,
+        context: getProjectName(activity.projectId),
+        owner: activity.assignee || 'Chưa gán',
+        due: formatDate(activity.deadline),
+      };
+
+      if (indicator.isOverdue) {
+        items.push({ ...base, reason: 'Quá hạn', tone: 'danger' });
+      } else if (activity.deadline && activity.deadline >= today && activity.deadline <= twoDaysLater) {
+        items.push({ ...base, reason: 'Sắp đến hạn', tone: 'warning' });
+      }
+      if (activity.status === 'Chờ duyệt') {
+        items.push({ ...base, reason: activity.approver ? `Chờ duyệt: ${activity.approver}` : 'Chờ duyệt', tone: 'review' });
+      }
+      if (!activity.assignee) {
+        items.push({ ...base, reason: 'Chưa có owner', tone: 'muted' });
+      }
+      return items;
+    });
+
+  const contentFocusItems: FocusItem[] = contents
+    .filter(content => {
+      const status = content.status || 'Draft';
+      return status === 'In review' || (status === 'Approved' && !content.publishedAt);
+    })
+    .map(content => ({
+      id: content.id,
+      type: 'content' as const,
+      title: content.title,
+      context: content.projectName || 'Nội dung độc lập',
+      owner: content.approver || 'Chưa gán người duyệt',
+      due: content.publishedAt ? formatDate(content.publishedAt) : '—',
+      reason: (content.status || 'Draft') === 'Approved' ? 'Approved, chưa publish' : 'Content đang review',
+      tone: (content.status || 'Draft') === 'Approved' ? 'success' : 'review',
+    }));
+
+  const focusItems = [...activityFocusItems, ...contentFocusItems].slice(0, 8);
 
   const pieData = [
     { name: 'Chưa bắt đầu', value: notStarted, color: '#94a3b8' },
@@ -35,101 +146,160 @@ export function Dashboard() {
 
   const projectChartData = projects.map(p => {
     const pActs = activities.filter(a => a.projectId === p.id);
-    const done = pActs.filter(a => a.status === 'Hoàn thành').length;
+    const done = pActs.filter(isDone).length;
     return { name: p.name, total: pActs.length, done };
   });
 
-  const getProjectName = (projectId: string) => {
-    return projects.find(p => p.id === projectId)?.name || 'Unknown';
-  };
+  const activeActivities = activities.filter(a => a.status === 'Đang thực hiện').slice(0, 6);
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="mb-2">
-        <h1 className="text-2xl font-bold text-text-primary mb-1">Dashboard</h1>
-        <p className="text-sm text-text-secondary">Tổng quan các hoạt động truyền thông nội bộ</p>
+    <div className="page-shell">
+      <div className="page-header">
+        <div>
+          <div className="eyebrow">Control center</div>
+          <h1 className="page-title">Dashboard truyền thông nội bộ</h1>
+          <p className="page-subtitle">Bắt đầu đúng luồng, theo dõi việc cần xử lý hôm nay và kiểm soát tiến độ truyền thông.</p>
+        </div>
+        <div className="dashboard-health">
+          <div className="dashboard-health-label">Tình trạng tổng thể</div>
+          <div className="dashboard-health-value">{completionRate}%</div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        {stats.map((stat, i) => (
-          <Card key={i} className="flex flex-col gap-3">
-            <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold w-fit ${stat.color}`}>
-              {stat.label}
-            </span>
-            <p className="text-3xl font-bold text-text-primary">{stat.value}</p>
-          </Card>
+      <section className="start-here-grid" aria-label="Bắt đầu nhanh">
+        {startActions.map(action => (
+          <article key={action.title} className="start-card panel-card">
+            <div>
+              <h2>{action.title}</h2>
+              <p>{action.desc}</p>
+            </div>
+            <Button variant="secondary" size="sm" onClick={action.onClick}>{action.action}</Button>
+          </article>
         ))}
-      </div>
+      </section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card title="Phân bố trạng thái" className="lg:col-span-1">
+      <section className="kpi-grid" aria-label="Chỉ số tổng quan">
+        {stats.map(stat => (
+          <article key={stat.label} className="panel-card kpi-card" style={{ '--tone': stat.tone, '--accent': stat.accent } as CSSProperties}>
+            <div className="kpi-label">{stat.label}</div>
+            <div className="kpi-value">{stat.value}</div>
+            <div className="kpi-caption">{stat.caption}</div>
+          </article>
+        ))}
+      </section>
+
+      <section className="today-focus panel-card">
+        <div className="today-focus-head">
+          <div>
+            <p className="eyebrow">Action center</p>
+            <h2 className="panel-card-title">Today focus</h2>
+          </div>
+          <div className="today-focus-summary">
+            <span>{overdue} quá hạn</span>
+            <span>{dueSoon} sắp hạn</span>
+            <span>{waiting} chờ duyệt</span>
+            <span>{approvedUnpublished} approved chưa publish</span>
+          </div>
+        </div>
+
+        {focusItems.length === 0 ? (
+          <div className="empty-state">Không có việc ưu tiên ngay lúc này.</div>
+        ) : (
+          <div className="focus-list">
+            {focusItems.map(item => (
+              <button key={`${item.type}-${item.id}-${item.reason}`} className="focus-row" onClick={() => navigate(item.type === 'activity' ? '/activities' : '/library')}>
+                <span className={`focus-reason ${focusToneClass(item.tone)}`}>{item.reason}</span>
+                <span className="focus-main">
+                  <strong>{item.title}</strong>
+                  <small>{item.context}</small>
+                </span>
+                <span className="focus-meta">{item.owner}</span>
+                <span className="focus-date">{item.due}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="dashboard-grid">
+        <article className="chart-card panel-card">
+          <h2 className="panel-card-title">Phân bổ trạng thái</h2>
           {pieData.length > 0 ? (
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={4} dataKey="value">
-                    {pieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px' }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="flex flex-wrap gap-3 mt-2 justify-center">
-                {pieData.map(d => (
-                  <div key={d.name} className="flex items-center gap-1.5 text-xs text-text-secondary">
-                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.color }} />
-                    {d.name} ({d.value})
+            <>
+              <div className="chart-body">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={72} outerRadius={104} paddingAngle={5} dataKey="value">
+                      {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                    </Pie>
+                    <Tooltip contentStyle={{ background: '#fff', border: '1px solid #dfe5ef', borderRadius: 12, fontSize: 13, boxShadow: '0 16px 32px rgba(16,24,40,.12)' }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="status-legend">
+                {pieData.map(item => (
+                  <div key={item.name} className="legend-item">
+                    <span>{item.name}</span>
+                    <span className="legend-count">{item.value}</span>
                   </div>
                 ))}
               </div>
-            </div>
+            </>
           ) : (
-            <div className="h-64 flex items-center justify-center text-sm text-text-tertiary">Chưa có dữ liệu</div>
+            <div className="empty-state">Chưa có dữ liệu để hiển thị.</div>
           )}
-        </Card>
+        </article>
 
-        <Card title="Tiến độ dự án" className="lg:col-span-2">
+        <article className="chart-card panel-card">
+          <h2 className="panel-card-title">Tiến độ theo dự án</h2>
           {projectChartData.length > 0 ? (
-            <div className="h-64">
+            <div className="chart-body">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={projectChartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#64748b' }} />
-                  <YAxis tick={{ fontSize: 12, fill: '#64748b' }} />
-                  <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px' }} />
-                  <Bar dataKey="total" fill="#c7d2fe" radius={[4, 4, 0, 0]} name="Tổng" />
-                  <Bar dataKey="done" fill="#6366f1" radius={[4, 4, 0, 0]} name="Hoàn thành" />
+                <BarChart data={projectChartData} margin={{ top: 18, right: 18, bottom: 4, left: -14 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#edf1f7" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#667085' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 12, fill: '#667085' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <Tooltip contentStyle={{ background: '#fff', border: '1px solid #dfe5ef', borderRadius: 12, fontSize: 13, boxShadow: '0 16px 32px rgba(16,24,40,.12)' }} />
+                  <Bar dataKey="total" fill="#d8e0ee" radius={[8, 8, 0, 0]} name="Tổng" maxBarSize={70} />
+                  <Bar dataKey="done" fill="#4f46e5" radius={[8, 8, 0, 0]} name="Hoàn thành" maxBarSize={70} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           ) : (
-            <div className="h-64 flex items-center justify-center text-sm text-text-tertiary">Chưa có dự án nào</div>
+            <div className="empty-state">Chưa có dự án nào.</div>
           )}
-        </Card>
-      </div>
+        </article>
+      </section>
 
-      <Card title="Hoạt động đang triển khai">
-        <div className="flex flex-col gap-3 mt-1">
-          {activities.filter(a => a.status === 'Đang thực hiện').slice(0, 5).map(a => (
-            <div key={a.id} className="p-3.5 border border-border rounded-lg bg-surface-secondary flex items-center justify-between">
-              <div className="flex flex-col gap-1">
-                <span className="font-semibold text-sm text-text-primary">{a.name}</span>
-                <span className="text-xs text-text-tertiary">{getProjectName(a.projectId)}</span>
-              </div>
-              <div className="flex items-center gap-4 text-xs text-text-secondary">
-                <span>{a.assignee}</span>
-                <span className="font-medium">{a.deadline}</span>
-              </div>
-            </div>
-          ))}
-          {activities.filter(a => a.status === 'Đang thực hiện').length === 0 && (
-            <div className="text-center text-sm text-text-tertiary py-8">Không có hoạt động nào đang triển khai</div>
-          )}
+      <article className="panel-card">
+        <h2 className="panel-card-title">Hoạt động đang triển khai</h2>
+        <div className="table-wrap mt-4">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Tên hoạt động</th>
+                <th>Dự án</th>
+                <th>Phụ trách</th>
+                <th>Deadline</th>
+                <th>Trạng thái</th>
+              </tr>
+            </thead>
+            <tbody>
+              {activeActivities.length === 0 ? (
+                <tr><td colSpan={5} className="text-center py-10 text-text-tertiary">Không có hoạt động nào đang triển khai.</td></tr>
+              ) : activeActivities.map(activity => (
+                <tr key={activity.id}>
+                  <td><span className="font-bold text-text-primary">{activity.name}</span></td>
+                  <td>{getProjectName(activity.projectId)}</td>
+                  <td>{activity.assignee || 'Chưa gán'}</td>
+                  <td><span className="font-bold text-text-primary">{activity.deadline || 'Chưa có'}</span></td>
+                  <td><Badge status={activity.status} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      </Card>
+      </article>
     </div>
   );
 }

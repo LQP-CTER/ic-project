@@ -5,21 +5,21 @@ interface BadgeProps {
 }
 
 const statusStyles: Record<string, string> = {
-  'Hoàn thành': 'bg-success-light text-success border-success/20',
-  'Kết thúc': 'bg-success-light text-success border-success/20',
-  'Đang thực hiện': 'bg-primary-light text-primary border-primary/20',
-  'Đang trong thời gian thực hiện': 'bg-primary-light text-primary border-primary/20',
-  'Chờ duyệt': 'bg-warning-light text-warning border-warning/20',
-  'Sắp đến hạn': 'bg-warning-light text-warning border-warning/20',
-  'Quá hạn': 'bg-danger-light text-danger border-danger/20',
-  'Tạm dừng': 'bg-surface-tertiary text-text-tertiary border-border',
-  'Chưa bắt đầu': 'bg-surface-tertiary text-text-secondary border-border',
+  'Hoàn thành': 'bg-success-light text-success border-emerald-200',
+  'Kết thúc': 'bg-success-light text-success border-emerald-200',
+  'Đang thực hiện': 'bg-primary-light text-primary border-indigo-200',
+  'Đang trong thời gian thực hiện': 'bg-primary-light text-primary border-indigo-200',
+  'Chờ duyệt': 'bg-warning-light text-warning border-amber-200',
+  'Sắp đến hạn': 'bg-warning-light text-warning border-amber-200',
+  'Quá hạn': 'bg-danger-light text-danger border-rose-200',
+  'Tạm dừng': 'bg-slate-100 text-slate-500 border-slate-200',
+  'Chưa bắt đầu': 'bg-slate-100 text-slate-600 border-slate-200',
 };
 
 export function Badge({ status }: BadgeProps) {
-  const style = statusStyles[status] || 'bg-surface-tertiary text-text-secondary border-border';
+  const style = statusStyles[status] || 'bg-slate-100 text-slate-600 border-slate-200';
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${style}`}>
+    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-extrabold border ${style}`}>
       {status}
     </span>
   );

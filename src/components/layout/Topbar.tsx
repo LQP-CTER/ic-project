@@ -1,10 +1,22 @@
-import { useState, useRef, useEffect } from 'react';
+﻿import { useState, useRef, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+
+const titles: Record<string, { title: string; subtitle: string }> = {
+  '/': { title: 'Dashboard', subtitle: 'Theo dõi tiến độ truyền thông nội bộ' },
+  '/activities': { title: 'Hoạt động', subtitle: 'Quản lý dự án, deadline và người phụ trách' },
+  '/ai-assistant': { title: 'AI Assistant', subtitle: 'Tạo nội dung truyền thông theo ngữ cảnh' },
+  '/workflow': { title: 'Workflow', subtitle: 'Khởi tạo dự án từ quy trình mẫu' },
+  '/library': { title: 'Thư viện', subtitle: 'Lưu trữ nội dung đã duyệt và có thể tái sử dụng' },
+  '/users': { title: 'Người dùng', subtitle: 'Quản lý quyền truy cập workspace' },
+};
 
 export function Topbar() {
   const { user, logout } = useAuth();
+  const { pathname } = useLocation();
   const [showProfile, setShowProfile] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
+  const page = titles[pathname] || titles['/'];
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -21,35 +33,35 @@ export function Topbar() {
   const initial = displayName.charAt(0).toUpperCase();
 
   return (
-    <header className="h-[70px] bg-surface border-b border-border flex items-center justify-between px-8 shrink-0">
-      <div />
-      <div className="flex items-center gap-4">
+    <header className="app-topbar">
+      <div>
+        <div className="topbar-kicker">IC Platform</div>
+        <h1 className="topbar-title">{page.title}</h1>
+        <div className="topbar-subtitle">{page.subtitle}</div>
+      </div>
+
+      <div className="topbar-right">
+        <div className="sync-status">
+          <div className="sync-status-title">Google Sheets mode</div>
+          <div className="sync-status-text">Dữ liệu đồng bộ qua Apps Script</div>
+        </div>
+
         <div className="relative" ref={profileRef}>
-          <button
-            className="flex items-center gap-3 px-3 py-1.5 rounded-lg hover:bg-surface-tertiary transition-colors"
-            onClick={() => setShowProfile(!showProfile)}
-          >
-            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-sm font-bold">
-              {initial}
-            </div>
-            <div className="flex flex-col items-start">
-              <span className="text-sm font-semibold text-text-primary leading-tight">{displayName}</span>
-              <span className="text-xs text-text-tertiary leading-tight">{displayEmail}</span>
-            </div>
+          <button className="profile-button" onClick={() => setShowProfile(!showProfile)}>
+            <span className="profile-avatar">{initial}</span>
+            <span>
+              <span className="profile-name">{displayName}</span>
+              <span className="profile-email">{displayEmail}</span>
+            </span>
           </button>
 
           {showProfile && (
-            <div className="absolute top-[calc(100%+8px)] right-0 w-56 bg-surface border border-border rounded-xl shadow-lg z-50 p-2 animate-scale-in">
-              <div className="px-3 py-2 border-b border-border mb-2">
-                <p className="text-sm font-semibold text-text-primary">{displayName}</p>
-                <p className="text-xs text-text-tertiary">{displayEmail}</p>
+            <div className="profile-menu animate-scale-in">
+              <div className="profile-menu-head">
+                <div className="profile-menu-name">{displayName}</div>
+                <div className="profile-menu-email">{displayEmail}</div>
               </div>
-              <button
-                onClick={logout}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-danger hover:bg-danger-light transition-colors"
-              >
-                Đăng xuất
-              </button>
+              <button onClick={logout} className="profile-menu-action">Đăng xuất</button>
             </div>
           )}
         </div>

@@ -1,42 +1,43 @@
-import { NavLink } from 'react-router-dom';
+﻿import { NavLink } from 'react-router-dom';
+import { BrandLogo } from '../brand/BrandLogo';
 
 const links = [
-  { to: '/', label: 'Dashboard' },
-  { to: '/activities', label: 'Hoạt động' },
-  { to: '/ai-assistant', label: 'AI Assistant' },
-  { to: '/workflow', label: 'Workflow' },
-  { to: '/library', label: 'Thư viện' },
+  { to: '/', label: 'Dashboard', hint: 'Tổng quan' },
+  { to: '/activities', label: 'Hoạt động', hint: 'Dự án và task' },
+  { to: '/ai-assistant', label: 'AI Assistant', hint: 'Tạo nội dung' },
+  { to: '/workflow', label: 'Workflow', hint: 'Template' },
+  { to: '/library', label: 'Thư viện', hint: 'Nội dung đã lưu' },
+  { to: '/users', label: 'Người dùng', hint: 'Phân quyền' },
 ];
 
 export function Sidebar() {
   return (
-    <aside className="w-64 h-screen bg-surface border-r border-border flex flex-col shrink-0">
-      <div className="h-[70px] flex items-center px-6 border-b border-border">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center text-white font-bold text-sm">
-            IC
-          </div>
-          <span className="text-lg font-bold text-text-primary tracking-tight">Platform</span>
-        </div>
+    <aside className="app-sidebar">
+      <div className="sidebar-brand">
+        <BrandLogo size="md" theme="dark" />
       </div>
-      <nav className="flex-1 px-3 py-4 flex flex-col gap-1">
+
+      <nav className="sidebar-nav">
         {links.map((link) => (
           <NavLink
             key={link.to}
             to={link.to}
             end={link.to === '/'}
-            className={({ isActive }) =>
-              `flex items-center px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
-                isActive
-                  ? 'bg-primary-light text-primary'
-                  : 'text-text-secondary hover:bg-surface-tertiary hover:text-text-primary'
-              }`
-            }
+            className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
           >
-            {link.label}
+            <span className="sidebar-link-label">{link.label}</span>
+            <span className="sidebar-link-hint">{link.hint}</span>
           </NavLink>
         ))}
       </nav>
+
+      <div className="sidebar-footer">
+        <div className="sidebar-workspace">
+          <div className="sidebar-footer-label">Live workspace</div>
+          <div className="sidebar-footer-title">IC Data</div>
+          <div className="sidebar-footer-text">Google Sheets database đã kết nối và sẵn sàng đồng bộ.</div>
+        </div>
+      </div>
     </aside>
   );
 }

@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Input, Select, Textarea } from './ui/Input';
 import { Button } from './ui/Button';
 import { type Activity, type Status } from '../data/mockData';
 import { useData } from '../context/DataContext';
+import { parseChecklist, serializeChecklist } from '../lib/checklist';
 
 interface ActivityFormProps {
   initialData?: Activity;
@@ -26,6 +27,10 @@ export function ActivityForm({ initialData, onSubmit, onCancel }: ActivityFormPr
     channel: initialData?.channel ?? '',
     attachmentLink: initialData?.attachmentLink ?? '',
     notes: initialData?.notes ?? '',
+    approver: initialData?.approver ?? '',
+    reviewDueDate: initialData?.reviewDueDate ?? '',
+    reviewNotes: initialData?.reviewNotes ?? '',
+    checklist: parseChecklist(initialData?.checklist).map(item => item.title).join('\\n'),
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -39,7 +44,10 @@ export function ActivityForm({ initialData, onSubmit, onCancel }: ActivityFormPr
       alert('Vui lòng tạo ít nhất một dự án trước khi tạo hoạt động.');
       return;
     }
-    onSubmit(formData);
+    onSubmit({
+      ...formData,
+      checklist: serializeChecklist(parseChecklist(formData.checklist)),
+    });
   };
 
   return (
@@ -81,6 +89,20 @@ export function ActivityForm({ initialData, onSubmit, onCancel }: ActivityFormPr
 
       <Input label="Tài liệu đính kèm" name="attachmentLink" value={formData.attachmentLink} onChange={handleChange} placeholder="https://..." />
 
+      <Textarea label="Checklist / subtask ban đầu" name="checklist" value={formData.checklist} onChange={handleChange} rows={3} placeholder="Mỗi dòng là một việc nhỏ, ví dụ: Viết copy, Gửi review, Chốt bản đăng..." />
+
+      <div className="form-section-card compact">
+        <div className="form-section-head">
+          <p className="eyebrow">Review</p>
+          <h3>Thông tin duyệt</h3>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <Input label="Người duyệt" name="approver" value={formData.approver} onChange={handleChange} placeholder="IC Lead, HR Lead..." />
+          <Input type="date" label="Hạn review" name="reviewDueDate" value={formData.reviewDueDate} onChange={handleChange} />
+        </div>
+        <Textarea label="Ghi chú review" name="reviewNotes" value={formData.reviewNotes} onChange={handleChange} rows={2} placeholder="Feedback, yêu cầu chỉnh sửa, điều kiện approve..." />
+      </div>
+
       <Textarea label="Ghi chú" name="notes" value={formData.notes} onChange={handleChange} rows={2} />
 
       <div className="flex justify-end gap-3 pt-2">
@@ -90,3 +112,7 @@ export function ActivityForm({ initialData, onSubmit, onCancel }: ActivityFormPr
     </form>
   );
 }
+
+
+
+
