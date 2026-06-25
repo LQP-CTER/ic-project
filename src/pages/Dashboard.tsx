@@ -57,7 +57,7 @@ export function Dashboard() {
   const stats = [
     { label: 'Tổng hoạt động', value: total, caption: `${projects.length} dự án đang theo dõi`, tone: '#101828', accent: '#64748b' },
     { label: 'Hoàn thành', value: completed, caption: `${completionRate}% completion rate`, tone: '#047857', accent: '#10b981' },
-    { label: 'Đang thực hiện', value: inProgress, caption: 'Cần theo sát tiến độ', tone: '#4f46e5', accent: '#6366f1' },
+    { label: 'Đang thực hiện', value: inProgress, caption: 'Cần theo sát tiến độ', tone: '#2563eb', accent: '#3b82f6' },
     { label: 'Sắp đến hạn', value: dueSoon, caption: 'Trong 3 ngày tới', tone: '#b45309', accent: '#f59e0b' },
     { label: 'Quá hạn', value: overdue, caption: 'Cần xử lý ưu tiên', tone: '#be123c', accent: '#e11d48' },
   ];
@@ -65,25 +65,25 @@ export function Dashboard() {
   const startActions = [
     {
       title: 'Tạo chiến dịch bài bản',
-      desc: 'Dùng workflow template để tạo project và activity nhanh.',
+      desc: 'Workflow template, tạo nhanh.',
       action: 'Mở Workflow',
       onClick: () => navigate('/workflow'),
     },
     {
       title: 'Viết nội dung gấp',
-      desc: 'Vào AI Assistant, tạo nhanh copy và lưu vào Library.',
+      desc: 'Copy nhanh, lưu vào Library.',
       action: 'Mở AI Assistant',
       onClick: () => navigate('/ai-assistant'),
     },
     {
       title: 'Quản lý timeline/task',
-      desc: 'Tạo project, chia activity, owner, deadline và status.',
+      desc: 'Project, owner, deadline, status.',
       action: 'Mở Hoạt động',
       onClick: () => navigate('/activities'),
     },
     {
       title: 'Lưu/chỉnh nội dung có sẵn',
-      desc: 'Thêm, sửa, copy và theo dõi lifecycle nội dung.',
+      desc: 'Thêm, sửa, theo dõi lifecycle.',
       action: 'Mở Thư viện',
       onClick: () => navigate('/library'),
     },
@@ -139,7 +139,7 @@ export function Dashboard() {
 
   const pieData = [
     { name: 'Chưa bắt đầu', value: notStarted, color: '#94a3b8' },
-    { name: 'Đang thực hiện', value: inProgress, color: '#6366f1' },
+    { name: 'Đang thực hiện', value: inProgress, color: '#3b82f6' },
     { name: 'Chờ duyệt', value: waiting, color: '#f59e0b' },
     { name: 'Hoàn thành', value: completed, color: '#10b981' },
   ].filter(d => d.value > 0);
@@ -155,11 +155,7 @@ export function Dashboard() {
   return (
     <div className="page-shell">
       <div className="page-header">
-        <div>
-          <div className="eyebrow">Control center</div>
-          <h1 className="page-title">Dashboard truyền thông nội bộ</h1>
-          <p className="page-subtitle">Bắt đầu đúng luồng, theo dõi việc cần xử lý hôm nay và kiểm soát tiến độ truyền thông.</p>
-        </div>
+        <p className="page-subtitle !mt-0">Bắt đầu đúng luồng, theo dõi việc cần xử lý hôm nay và kiểm soát tiến độ truyền thông.</p>
         <div className="dashboard-health">
           <div className="dashboard-health-label">Tình trạng tổng thể</div>
           <div className="dashboard-health-value">{completionRate}%</div>
@@ -190,10 +186,7 @@ export function Dashboard() {
 
       <section className="today-focus panel-card">
         <div className="today-focus-head">
-          <div>
-            <p className="eyebrow">Action center</p>
-            <h2 className="panel-card-title">Today focus</h2>
-          </div>
+          <h2 className="panel-card-title">Today focus</h2>
           <div className="today-focus-summary">
             <span>{overdue} quá hạn</span>
             <span>{dueSoon} sắp hạn</span>
@@ -261,7 +254,7 @@ export function Dashboard() {
                   <YAxis tick={{ fontSize: 12, fill: '#667085' }} axisLine={false} tickLine={false} allowDecimals={false} />
                   <Tooltip contentStyle={{ background: '#fff', border: '1px solid #dfe5ef', borderRadius: 12, fontSize: 13, boxShadow: '0 16px 32px rgba(16,24,40,.12)' }} />
                   <Bar dataKey="total" fill="#d8e0ee" radius={[8, 8, 0, 0]} name="Tổng" maxBarSize={70} />
-                  <Bar dataKey="done" fill="#4f46e5" radius={[8, 8, 0, 0]} name="Hoàn thành" maxBarSize={70} />
+                  <Bar dataKey="done" fill="#ea580c" radius={[8, 8, 0, 0]} name="Hoàn thành" maxBarSize={70} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

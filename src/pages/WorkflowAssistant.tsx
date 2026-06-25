@@ -393,13 +393,9 @@ export function WorkflowAssistant() {
   return (
     <div className="page-shell flex flex-col gap-8">
       <div className="page-header">
-        <div>
-          <p className="eyebrow">Workflow builder</p>
-          <h1 className="page-title">Workflow Templates</h1>
-          <p className="page-subtitle">
-            Tạo, chỉnh sửa và sử dụng quy trình mẫu để tự động sinh project cùng toàn bộ hoạt động truyền thông.
-          </p>
-        </div>
+        <p className="page-subtitle !mt-0">
+          Tạo, chỉnh sửa và sử dụng quy trình mẫu để tự động sinh project cùng toàn bộ hoạt động truyền thông.
+        </p>
         <div className="workflow-header-actions">
           <span className="text-xs text-text-secondary bg-surface border border-border px-4 py-2 rounded-full font-medium">
             {workflowTemplates.length} templates có sẵn

@@ -8,15 +8,18 @@ const titles: Record<string, { title: string; subtitle: string }> = {
   '/ai-assistant': { title: 'AI Assistant', subtitle: 'Tạo nội dung truyền thông theo ngữ cảnh' },
   '/workflow': { title: 'Workflow', subtitle: 'Khởi tạo dự án từ quy trình mẫu' },
   '/library': { title: 'Thư viện', subtitle: 'Lưu trữ nội dung đã duyệt và có thể tái sử dụng' },
+  '/team-voice': { title: 'Team Voice', subtitle: 'Quản lý bài mẫu để AI học giọng viết của team' },
   '/users': { title: 'Người dùng', subtitle: 'Quản lý quyền truy cập workspace' },
 };
+
+const DEFAULT_PAGE = { title: 'IC Platform', subtitle: 'Internal Communications Hub' };
 
 export function Topbar() {
   const { user, logout } = useAuth();
   const { pathname } = useLocation();
   const [showProfile, setShowProfile] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
-  const page = titles[pathname] || titles['/'];
+  const page = titles[pathname] || DEFAULT_PAGE;
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

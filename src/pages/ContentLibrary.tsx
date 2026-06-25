@@ -209,11 +209,7 @@ export function ContentLibrary() {
   return (
     <div className="page-shell flex flex-col gap-6 h-full min-h-0">
       <div className="page-header">
-        <div>
-          <p className="eyebrow">Content library</p>
-          <h1 className="page-title">Thư viện nội dung</h1>
-          <p className="page-subtitle">Quản lý, chỉnh sửa và tái sử dụng nội dung truyền thông đã tạo bởi AI hoặc nhập thủ công.</p>
-        </div>
+        <p className="page-subtitle !mt-0">Quản lý, chỉnh sửa và tái sử dụng nội dung truyền thông đã tạo bởi AI hoặc nhập thủ công.</p>
         <div className="library-header-actions">
           <Button variant="secondary" onClick={() => navigate('/ai-assistant')}>Tạo bằng AI</Button>
           <Button onClick={openCreateForm}>Thêm nội dung</Button>

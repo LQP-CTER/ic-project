@@ -136,11 +136,7 @@ export function UsersPage() {
     return (
       <div className="space-y-6">
         <div className="page-header">
-          <div>
-            <p className="eyebrow">Access control</p>
-            <h1 className="page-title">Quản lý người dùng</h1>
-            <p className="page-subtitle">Khu vực này chỉ dành cho admin để bảo vệ quyền truy cập workspace.</p>
-          </div>
+          <p className="page-subtitle !mt-0">Khu vực này chỉ dành cho admin để bảo vệ quyền truy cập workspace.</p>
         </div>
         <Card className="access-denied-card">
           <p className="eyebrow">Không đủ quyền</p>
@@ -154,11 +150,7 @@ export function UsersPage() {
   return (
     <div className="space-y-6">
       <div className="page-header">
-        <div>
-          <p className="eyebrow">Access control</p>
-          <h1 className="page-title">Quản lý người dùng</h1>
-          <p className="page-subtitle">Thêm, chỉnh sửa và thu hồi quyền truy cập mà không cần mở Google Sheet thủ công.</p>
-        </div>
+        <p className="page-subtitle !mt-0">Thêm, chỉnh sửa và thu hồi quyền truy cập mà không cần mở Google Sheet thủ công.</p>
         <Button onClick={openCreateModal}>Thêm người dùng</Button>
       </div>
 

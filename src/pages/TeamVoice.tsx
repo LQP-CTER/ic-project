@@ -131,11 +131,7 @@ export function TeamVoicePage() {
   return (
     <div className="space-y-6">
       <div className="page-header">
-        <div>
-          <p className="eyebrow">AI memory</p>
-          <h1 className="page-title">Team Voice</h1>
-          <p className="page-subtitle">Lưu các bài truyền thông đã được duyệt để AI học giọng viết, cấu trúc CTA và cách xưng hô của team.</p>
-        </div>
+        <p className="page-subtitle !mt-0">Lưu các bài truyền thông đã được duyệt để AI học giọng viết, cấu trúc CTA và cách xưng hô của team.</p>
         <Button onClick={openCreateModal}>Thêm bài mẫu</Button>
       </div>
 

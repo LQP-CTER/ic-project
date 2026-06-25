@@ -440,5 +440,3 @@ function checkUser(email) {
 
   return { authorized: false };
 }
-
-
