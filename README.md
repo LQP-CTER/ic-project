@@ -14,11 +14,12 @@ Các nhóm chức năng chính:
 | --- | --- | --- |
 | Dashboard | Nhìn tổng quan tiến độ | Xem tổng số hoạt động, trạng thái, deadline sắp tới/quá hạn, tiến độ theo dự án |
 | Hoạt động | Quản lý dự án và task truyền thông | Tạo/sửa/xóa dự án, tạo/sửa/xóa hoạt động, đổi trạng thái, quản lý deadline/người phụ trách |
-| AI Assistant | Tạo nội dung truyền thông | Chọn dự án/hoạt động, nhập brief, tạo GTalk/email/poster copy/plan/reminder, lưu vào thư viện |
+| AI Assistant | Tạo nội dung truyền thông | Chọn dự án/hoạt động, nhập brief, dùng Team Voice references, tạo GTalk/email/poster copy/plan/reminder, lưu vào thư viện |
 | Workflow | Tạo dự án từ quy trình mẫu | Chọn template như khảo sát nhân viên, town hall, triển khai công cụ mới; app tự tạo project + task |
 | Thư viện | Quản lý nội dung đã tạo | Thêm/sửa/xóa/xem/copy nội dung, gắn nội dung với dự án hoặc hoạt động |
+| Team Voice | Quản lý bài mẫu cho AI | Lưu bài truyền thông đã duyệt để AI học style, tone, CTA và cách xưng hô |
 | Người dùng | Quản lý quyền truy cập | Admin thêm/sửa/xóa người dùng và phân quyền admin/member |
-| Google Sheets backend | Database tạm cho MVP | Lưu Projects, Activities, Contents, Users, WorkflowTemplates để team có thể triển khai nhanh |
+| Google Sheets backend | Database tạm cho MVP | Lưu Projects, Activities, Contents, Users, WorkflowTemplates, StyleReferences để team có thể triển khai nhanh |
 
 ## 2. Ai sẽ dùng app này?
 
@@ -50,7 +51,7 @@ Người dùng có quyền đăng nhập nhưng không quản trị user. Có th
 
 ## 3. Data model hiện tại
 
-Dữ liệu được chia thành 5 sheet chính trong Google Sheets.
+Dữ liệu được chia thành 6 sheet chính trong Google Sheets.
 
 ### Users
 
@@ -125,6 +126,21 @@ Quy trình mẫu để tạo nhanh project và activities cho các loại chiế
 | estimatedWeeks | Thời lượng triển khai ước tính |
 | steps | Danh sách bước/activity mẫu, lưu dạng JSON |
 
+
+### StyleReferences
+
+Kho bài mẫu để AI học giọng viết thực tế của team. AI Assistant chỉ lấy các bài `isActive = true` làm style context, học tone/cấu trúc/CTA nhưng không được copy nguyên văn.
+
+| Field | Ý nghĩa |
+| --- | --- |
+| id | Mã bài mẫu |
+| title | Tên bài mẫu |
+| channel | Kênh: GTalk, Email, Poster... |
+| purpose | Mục đích: Reminder, Launch, Recap... |
+| tone | Ghi chú giọng văn/style |
+| content | Nội dung bài mẫu đã duyệt/gửi thật |
+| isActive | Có đưa vào AI context hay không |
+| createdAt | Ngày tạo/lưu bài mẫu |
 ## 4. Workflow làm việc đề xuất cho team truyền thông
 
 Đây là workflow end-to-end nên dùng khi vận hành một chiến dịch truyền thông nội bộ trên IC Platform.
@@ -621,7 +637,7 @@ Nếu `VITE_GOOGLE_SHEETS_API_URL` để trống, ứng dụng chạy bằng moc
 1. Tạo một Google Sheet dành riêng cho IC Platform.
 2. Chọn **Extensions → Apps Script**.
 3. Dán toàn bộ nội dung từ [google-apps-script.js](google-apps-script.js), lưu project.
-4. Trong danh sách hàm, chạy `setupSheets` một lần và cấp quyền Google khi được hỏi. Hàm này tạo/cập nhật các sheet `Projects`, `Activities`, `Contents`, `Users`, `WorkflowTemplates` và thêm cột còn thiếu mà không xóa dữ liệu cũ.
+4. Trong danh sách hàm, chạy `setupSheets` một lần và cấp quyền Google khi được hỏi. Hàm này tạo/cập nhật các sheet `Projects`, `Activities`, `Contents`, `Users`, `WorkflowTemplates`, `StyleReferences` và thêm cột còn thiếu mà không xóa dữ liệu cũ. Nếu `StyleReferences` đang trống, hàm sẽ seed vài bài mẫu Team Voice ban đầu.
 5. Mở sheet `Users`, thêm ít nhất một hàng theo mẫu:
 
    | email | name | role |
@@ -631,7 +647,7 @@ Nếu `VITE_GOOGLE_SHEETS_API_URL` để trống, ứng dụng chạy bằng moc
 6. Chọn **Deploy → New deployment → Web app**. Chọn **Execute as: Me** và, cho MVP nội bộ, **Who has access: Anyone**.
 7. Sao chép URL Web app kết thúc bằng `/exec` vào `VITE_GOOGLE_SHEETS_API_URL`.
 
-Để kiểm tra API trước khi chạy app, mở URL sau trên trình duyệt. Kết quả đúng là JSON có `projects`, `activities`, `contents`, `users`, `workflowTemplates`.
+Để kiểm tra API trước khi chạy app, mở URL sau trên trình duyệt. Kết quả đúng là JSON có `projects`, `activities`, `contents`, `users`, `workflowTemplates`, `styleReferences`.
 
 ```text
 https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec?action=getAll

@@ -1,4 +1,4 @@
-﻿import { NavLink } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { BrandLogo } from '../brand/BrandLogo';
 
 const links = [
@@ -7,6 +7,7 @@ const links = [
   { to: '/ai-assistant', label: 'AI Assistant', hint: 'Tạo nội dung' },
   { to: '/workflow', label: 'Workflow', hint: 'Template' },
   { to: '/library', label: 'Thư viện', hint: 'Nội dung đã lưu' },
+  { to: '/team-voice', label: 'Team Voice', hint: 'Bài mẫu AI' },
   { to: '/users', label: 'Người dùng', hint: 'Phân quyền' },
 ];
 

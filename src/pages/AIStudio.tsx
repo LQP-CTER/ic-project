@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useData } from '../context/DataContext';
 import { chatCompletion } from '../lib/cerebras';
-import { type Project } from '../data/mockData';
+import { type Project, type StyleReference } from '../data/mockData';
 import toast from 'react-hot-toast';
 
 interface Message {
@@ -139,6 +139,37 @@ function isLowSignalPrompt(text: string) {
 }
 
 const LOW_SIGNAL_REPLY = 'Chào bạn. Bạn muốn mình hỗ trợ viết nội dung gì cho truyền thông nội bộ? Ví dụ: GTalk reminder, email thông báo, poster copy hoặc kế hoạch truyền thông.';
+function scoreStyleReference(reference: StyleReference, text: string, intent: string) {
+  const haystack = `${reference.title} ${reference.channel} ${reference.purpose} ${reference.tone}`.toLowerCase();
+  const lowerText = text.toLowerCase();
+  let score = 0;
+  if (reference.channel.toLowerCase().includes(intent)) score += 4;
+  if (intent === 'gtalk' && haystack.includes('gtalk')) score += 5;
+  if (intent === 'email' && haystack.includes('email')) score += 5;
+  if ((lowerText.includes('nhắc') || lowerText.includes('reminder')) && (haystack.includes('reminder') || haystack.includes('nhắc'))) score += 4;
+  if ((lowerText.includes('cảm ơn') || lowerText.includes('tri ân') || lowerText.includes('recap')) && (haystack.includes('thank') || haystack.includes('recap') || haystack.includes('trân trọng'))) score += 4;
+  if ((lowerText.includes('hướng dẫn') || lowerText.includes('guide')) && (haystack.includes('guide') || haystack.includes('hướng dẫn'))) score += 4;
+  for (const token of lowerText.split(/\s+/).filter(token => token.length > 3)) {
+    if (haystack.includes(token)) score += 1;
+  }
+  return score;
+}
+
+function buildStyleContext(styleReferences: StyleReference[], text: string, intent: string) {
+  const activeReferences = styleReferences.filter(reference => reference.isActive && reference.content.trim());
+  if (activeReferences.length === 0) return '';
+
+  const selectedReferences = [...activeReferences]
+    .sort((a, b) => scoreStyleReference(b, text, intent) - scoreStyleReference(a, text, intent))
+    .slice(0, 3);
+
+  const examples = selectedReferences.map((reference, index) => {
+    const content = reference.content.length > 1200 ? `${reference.content.slice(0, 1200).trim()}...` : reference.content.trim();
+    return `Bài mẫu ${index + 1}: ${reference.title}\nKênh: ${reference.channel}\nMục đích: ${reference.purpose}\nTone: ${reference.tone}\nNội dung mẫu:\n${content}`;
+  }).join('\n\n---\n\n');
+
+  return `\n\nTeam Voice references:\n${examples}\n\nCách dùng bài mẫu:\n- Học giọng văn, cách mở đầu, cách CTA, cách xưng hô Anh/Chị/Anh/Chị/Em và độ dài tương tự.\n- Không sao chép nguyên văn câu chữ từ bài mẫu.\n- Không dùng lại thông tin riêng của bài mẫu nếu người dùng không cung cấp trong yêu cầu hiện tại.\n- Nếu bài mẫu có emoji nhưng yêu cầu hiện tại không yêu cầu emoji, vẫn không dùng emoji.`;
+}
 function cleanupAiOutput(text: string) {
   return text
     .replace(/```[\s\S]*?```/g, block => block.replace(/```/g, '').trim())
@@ -152,7 +183,7 @@ function cleanupAiOutput(text: string) {
 }
 
 export function AIStudio() {
-  const { projects, activities, addProject, addContent } = useData();
+  const { projects, activities, styleReferences, addProject, addContent } = useData();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -232,7 +263,8 @@ export function AIStudio() {
     setIsGenerating(true);
 
     const ctx = buildContext();
-    const fullPrompt = `${text}${ctx}\n\n${guide.instruction}`;
+    const styleCtx = buildStyleContext(styleReferences, text, intent);
+    const fullPrompt = `${text}${ctx}${styleCtx}\n\n${guide.instruction}`;
 
     const chatMessages = [
       { role: 'system' as const, content: SYSTEM_PROMPT },
@@ -337,7 +369,7 @@ export function AIStudio() {
         <div>
           <p className="eyebrow">EX AI Studio</p>
           <h1 className="ai-title">AI Assistant</h1>
-          <p className="ai-subtitle">Tạo nội dung nội bộ gọn, rõ, copy dùng ngay.</p>
+          <p className="ai-subtitle">Tạo nội dung nội bộ gọn, rõ, copy dùng ngay. AI sẽ tham chiếu Team Voice khi có bài mẫu active.</p>
         </div>
 
         <div className="ai-section-label">Hành động nhanh</div>
@@ -361,7 +393,7 @@ export function AIStudio() {
             <p className="ai-chat-kicker">Copy-ready output</p>
             <h2>IC Content Assistant</h2>
           </div>
-          <div className="ai-chat-note">Không bảng dài, không emoji mặc định</div>
+          <div className="ai-chat-note">Đọc {styleReferences.filter(ref => ref.isActive).length} bài mẫu Team Voice</div>
         </div>
 
         <div className="ai-messages hide-scrollbar">
