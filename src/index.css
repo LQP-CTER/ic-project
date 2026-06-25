@@ -363,10 +363,14 @@ body {
   z-index: 0;
 }
 
-.app-topbar,
 .app-main {
   position: relative;
   z-index: 1;
+}
+
+.app-topbar {
+  position: relative;
+  z-index: 2;
 }
 
 .app-topbar {
