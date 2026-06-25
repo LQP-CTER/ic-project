@@ -18,59 +18,44 @@ export function LoginPage() {
   };
 
   return (
-    <div className="login-shell">
-      <div className="login-aura login-aura-one" />
-      <div className="login-aura login-aura-two" />
+    <main className="login-shell">
+      <section className="login-panel" aria-label="Đăng nhập IC Platform">
+        <div className="login-brand-row">
+          <BrandLogo size="md" theme="light" />
+        </div>
 
-      <div className="login-card-wrap">
-        <section className="login-hero-panel">
-          <BrandLogo size="lg" theme="dark" />
-          <div>
-            <p className="login-hero-kicker">Internal Communications Hub</p>
-            <h1 className="login-hero-title">Một workspace hiện đại cho toàn bộ hoạt động IC.</h1>
-            <p className="login-hero-text">Quản lý dự án, deadline, nội dung AI và thư viện truyền thông trên một hệ thống gọn gàng, đồng bộ bằng Google Sheets.</p>
-          </div>
-          <div className="login-feature-grid">
-            {['Project command', 'AI content studio', 'Workflow templates'].map(item => (
-              <div key={item} className="login-feature-card">
-                <span>{item}</span>
-                <small>Ready</small>
-              </div>
-            ))}
-          </div>
-        </section>
+        <div className="login-copy">
+          <p className="login-kicker">Internal Communications Hub</p>
+          <h1>Đăng nhập</h1>
+          <p>
+            Nhập email đã được cấp quyền trong Google Sheets để vào workspace của team EX.
+          </p>
+        </div>
 
-        <section className="login-form-panel">
-          <div className="login-form-header">
-            <BrandLogo size="md" theme="light" />
-            <p className="eyebrow">Secure access</p>
-            <h2 className="login-form-title">Đăng nhập</h2>
-            <p className="login-form-subtitle">Sử dụng email đã được cấp quyền trong Google Sheet để truy cập IC Platform.</p>
-          </div>
+        <form onSubmit={handleSubmit} className="login-form">
+          <label className="login-field">
+            <span>Email công việc</span>
+            <input
+              type="email"
+              placeholder="Nhập email được cấp quyền"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              autoComplete="off"
+              autoFocus
+              required
+              className="form-control"
+            />
+          </label>
 
-          <form onSubmit={handleSubmit} className="login-form">
-            <label className="login-field">
-              <span>Email công việc</span>
-              <input
-                type="email"
-                placeholder="phatlq@ghn.vn"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-                className="form-control"
-              />
-            </label>
-            <button type="submit" disabled={loading || !email.trim()} className="login-submit">
-              {loading ? 'Đang xác thực...' : 'Tiếp tục'}
-            </button>
-          </form>
+          <button type="submit" disabled={loading || !email.trim()} className="login-submit">
+            {loading ? 'Đang xác thực...' : 'Tiếp tục'}
+          </button>
+        </form>
 
-          <div className="login-note">
-            <strong>Quyền truy cập được kiểm tra qua Google Sheets.</strong>
-            <span>Nếu không đăng nhập được, hãy thêm email vào tab Users.</span>
-          </div>
-        </section>
-      </div>
-    </div>
+        <p className="login-helper">
+          Quyền truy cập được kiểm tra qua tab <strong>Users</strong> trong Google Sheets.
+        </p>
+      </section>
+    </main>
   );
 }

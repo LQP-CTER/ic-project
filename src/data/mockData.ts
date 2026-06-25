@@ -1,4 +1,4 @@
-﻿export type Status = 'Chưa bắt đầu' | 'Đang thực hiện' | 'Chờ duyệt' | 'Hoàn thành' | 'Tạm dừng' | 'Kết thúc';
+export type Status = 'Chưa bắt đầu' | 'Đang thực hiện' | 'Chờ duyệt' | 'Hoàn thành' | 'Tạm dừng' | 'Kết thúc';
 
 export interface Project {
   id: string;
@@ -179,9 +179,9 @@ export const initialContents: Content[] = [];
 
 export const initialUsers: UserRecord[] = [
   {
-    id: 'phatlq@ghn.vn',
-    email: 'phatlq@ghn.vn',
-    name: 'Lê Quý Phát',
+    id: 'admin@example.com',
+    email: 'admin@example.com',
+    name: 'EX Admin',
     role: 'admin'
   }
 ];
@@ -225,8 +225,3 @@ export function getDeadlineIndicator(act?: Activity) {
 
   return { isOverdue, indicator };
 }
-
-
-
-
-
