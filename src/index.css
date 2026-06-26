@@ -2124,3 +2124,129 @@ body {
   gap: 8px;
   padding-top: 4px;
 }
+
+/* Activity pipeline controls */
+.activity-card-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.activity-card-title-row p {
+  flex: 1;
+}
+
+.activity-drag-handle {
+  flex-shrink: 0;
+  padding: 4px 7px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #f8fafc;
+  color: var(--faint);
+  font-size: 10px;
+  font-weight: 850;
+  cursor: grab;
+}
+
+.activity-drag-handle:active {
+  cursor: grabbing;
+}
+
+.activity-card-pipeline-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.activity-card-pipeline-actions button {
+  min-height: 30px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 850;
+  transition: all .16s ease;
+}
+
+.activity-card-pipeline-actions button:not(:disabled):hover {
+  border-color: #c7d2fe;
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.activity-card-pipeline-actions button:disabled {
+  opacity: .42;
+  cursor: not-allowed;
+}
+
+.activity-status-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, #fff, #f8fafc);
+}
+
+.activity-status-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.activity-status-panel-head span:first-child {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.activity-status-switcher {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.activity-status-switcher button {
+  min-height: 38px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+  transition: all .16s ease;
+}
+
+.activity-status-switcher button:hover {
+  border-color: #c7d2fe;
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.activity-status-switcher button.active {
+  border-color: #4f46e5;
+  background: #4f46e5;
+  color: #fff;
+  box-shadow: 0 12px 24px rgba(79, 70, 229, .20);
+}
+
+.activity-status-panel p {
+  margin: 0;
+  color: var(--faint);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+@media (max-width: 640px) {
+  .activity-status-switcher {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

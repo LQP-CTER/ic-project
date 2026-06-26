@@ -1,5 +1,5 @@
-﻿import { useMemo, useState } from 'react';
-import { type Activity } from '../data/mockData';
+import { useMemo, useState } from 'react';
+import { type Activity, type Status } from '../data/mockData';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { useData } from '../context/DataContext';
@@ -10,8 +10,11 @@ interface ActivityDetailProps {
   onEdit: () => void;
   onDelete: () => void;
   onClose: () => void;
+  onStatusChange?: (status: Status) => void;
 }
 
+
+const ACTIVITY_STATUSES: Status[] = ['Chưa bắt đầu', 'Đang thực hiện', 'Chờ duyệt', 'Hoàn thành'];
 const PRIORITY_STYLE: Record<string, string> = {
   'High': 'bg-danger-light text-danger border-danger/20',
   'Medium': 'bg-warning-light text-warning border-warning/20',
@@ -34,14 +37,25 @@ function InfoRow({ label, value, isLink }: { label: string; value?: string; isLi
   );
 }
 
-export function ActivityDetail({ activity, onEdit, onDelete, onClose }: ActivityDetailProps) {
+export function ActivityDetail({ activity, onEdit, onDelete, onClose, onStatusChange }: ActivityDetailProps) {
   const { projects, updateActivity } = useData();
   const [checklist, setChecklist] = useState<ChecklistItem[]>(() => parseChecklist(activity.checklist));
+  const currentStatus = activity.status;
   const [newItemTitle, setNewItemTitle] = useState('');
   const projectName = projects.find(p => p.id === activity.projectId)?.name || 'Unknown Project';
   const priorityStyle = PRIORITY_STYLE[activity.priority] || PRIORITY_STYLE['Medium'];
   const checklistDone = useMemo(() => checklist.filter(item => item.done).length, [checklist]);
   const checklistPercent = checklist.length === 0 ? 0 : Math.round((checklistDone / checklist.length) * 100);
+
+
+  const handleStatusChange = (status: Status) => {
+    if (status === currentStatus) return;
+    if (onStatusChange) {
+      onStatusChange(status);
+    } else {
+      updateActivity(activity.id, { status });
+    }
+  };
 
   const persistChecklist = (nextItems: ChecklistItem[]) => {
     setChecklist(nextItems);
@@ -89,9 +103,24 @@ export function ActivityDetail({ activity, onEdit, onDelete, onClose }: Activity
         )}
       </div>
 
-      <div className="flex items-center gap-3 p-3 rounded-lg bg-surface-secondary border border-border">
-        <span className="text-sm text-text-secondary">Trạng thái:</span>
-        <Badge status={activity.status} />
+      <div className="activity-status-panel">
+        <div className="activity-status-panel-head">
+          <span>Trạng thái hiện tại</span>
+          <Badge status={currentStatus} />
+        </div>
+        <div className="activity-status-switcher">
+          {ACTIVITY_STATUSES.map(status => (
+            <button
+              key={status}
+              type="button"
+              className={status === currentStatus ? 'active' : ''}
+              onClick={() => handleStatusChange(status)}
+            >
+              {status}
+            </button>
+          ))}
+        </div>
+        <p>Pipeline có thể đi tới hoặc quay lại bước trước khi cần chỉnh sửa lại nội dung, owner hoặc review.</p>
       </div>
 
       <section className="activity-checklist-box">

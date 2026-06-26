@@ -20,100 +20,115 @@ interface QuickAction {
 }
 
 const QUICK_ACTIONS: QuickAction[] = [
-  { id: 'gtalk', title: 'Viết GTalk', description: '3 phiên bản ngắn, sẵn sàng gửi', prompt: 'Viết GTalk nội bộ cho ' },
-  { id: 'email', title: 'Soạn Email', description: 'Email rõ ý, đúng vai trò IC', prompt: 'Soạn email thông báo nội bộ về ' },
-  { id: 'poster', title: 'Tạo Poster', description: 'Concept, headline, body copy', prompt: 'Tạo concept và nội dung poster truyền thông nội bộ cho ' },
-  { id: 'plan', title: 'Kế hoạch truyền thông', description: 'Plan gọn theo timeline', prompt: 'Lập kế hoạch truyền thông chi tiết cho ' },
-  { id: 'survey', title: 'Khảo sát nhân viên', description: 'Câu hỏi và lời dẫn khảo sát', prompt: 'Xây dựng bộ câu hỏi khảo sát nhân viên về ' },
-  { id: 'townhall', title: 'Town Hall', description: 'Agenda và key message', prompt: 'Lên agenda và nội dung chương trình Town Hall về ' },
+  { id: 'gtalk', title: 'Viết GTalk', description: 'Bài truyền thông chỉn chu, văn phòng', prompt: 'Viết bài GTalk truyền thông nội bộ theo văn phong chuyên nghiệp cho ' },
+  { id: 'email', title: 'Soạn Email', description: 'Email văn phòng, mạch lạc, có chiều sâu', prompt: 'Soạn email truyền thông nội bộ theo văn phong chuyên nghiệp về ' },
+  { id: 'poster', title: 'Tạo Poster', description: 'Concept và thông điệp có insight', prompt: 'Tạo concept và nội dung poster truyền thông nội bộ theo hướng Senior Content cho ' },
+  { id: 'plan', title: 'Kế hoạch truyền thông', description: 'Plan bài bản theo mục tiêu và timeline', prompt: 'Lập kế hoạch truyền thông nội bộ chuyên nghiệp cho ' },
+  { id: 'survey', title: 'Khảo sát nhân viên', description: 'Lời dẫn và câu hỏi rõ insight', prompt: 'Xây dựng nội dung khảo sát nhân viên theo văn phong chuyên nghiệp về ' },
+  { id: 'townhall', title: 'Town Hall', description: 'Key message và flow chương trình chỉn chu', prompt: 'Lên agenda và nội dung chương trình Town Hall theo hướng Senior Internal Communications về ' },
 ];
 
-const SYSTEM_PROMPT = `Bạn là IC Copy Assistant cho team EX tại một công ty Việt Nam.
-Mục tiêu: tạo nội dung truyền thông nội bộ có thể copy dùng ngay.
+const SYSTEM_PROMPT = `Bạn là Senior Internal Communications Strategist kiêm Senior Content Marketing Writer cho team EX tại một công ty Việt Nam.
+Bạn viết như một người làm truyền thông nội bộ nhiều kinh nghiệm: hiểu mục tiêu truyền thông, biết dẫn dắt bối cảnh, tạo cảm xúc vừa đủ, diễn đạt văn phòng chỉn chu và chuyển ý mượt.
 
-Quy tắc bắt buộc:
+Mục tiêu: tạo nội dung truyền thông nội bộ có thể copy dùng ngay, có chất lượng tốt hơn bản nháp thông thường.
+
+Phong cách mặc định:
 - Trả lời bằng tiếng Việt.
-- Ngắn gọn, thực tế, đúng yêu cầu. Không viết lan man.
-- Không dùng emoji, trừ khi người dùng yêu cầu rõ.
+- Văn phong chuyên nghiệp, văn phòng, lịch sự, tự nhiên; ưu tiên xưng hô Anh/Chị hoặc Anh/Chị/Em tùy ngữ cảnh.
+- Viết có mở bài, bối cảnh, ý chính, CTA và câu kết. Không viết cụt lủn nếu người dùng không yêu cầu ngắn.
+- Độ dài mặc định ở mức vừa-dài: đủ ý, có nhịp văn và cảm xúc, nhưng không lan man.
+- Câu văn nên có chiều sâu hơn: giải thích vì sao thông tin quan trọng, nhân viên cần làm gì, việc đó đóng góp gì cho tập thể.
+- Không dùng emoji mặc định, trừ khi người dùng yêu cầu rõ hoặc Team Voice cho thấy chiến dịch đó thường dùng emoji.
 - Không dùng bảng markdown, không code block, không gạch ngang phân cách, không phần "Kết luận", không phần "Hướng dẫn sử dụng" nếu người dùng không hỏi.
 - Không tự bịa email, SharePoint, deadline, tên phòng ban, link hoặc thông tin cụ thể nếu người dùng chưa cung cấp. Dùng placeholder ngắn như [link], [deadline], [người gửi] khi cần.
-- Nếu tạo nội dung GTalk/Slack/Teams: tối đa 3 phiên bản, mỗi phiên bản 2-4 câu, có CTA rõ, không giải thích ưu điểm.
-- Nếu tạo email: gồm Subject và Body, tối đa 2 phiên bản.
-- Nếu tạo poster: gồm Concept, Headline, Subline, Body copy, CTA; tối đa 2 concept.
-- Nếu tạo kế hoạch: tối đa 5 bước, mỗi bước 1-2 dòng.
+- Không copy nguyên văn Team Voice references; chỉ học giọng văn, nhịp viết, cấu trúc và cách CTA.
+
+Quy tắc theo loại nội dung:
+- Nếu tạo GTalk/Slack/Teams: ưu tiên 1 bản chính hoàn chỉnh, văn phòng và có thể gửi ngay. Nếu phù hợp, thêm 1 phiên bản thay thế ngắn hơn. Không đưa 3 phiên bản rời rạc mặc định.
+- Nếu tạo email: gồm Subject và Body. Body có lời chào, bối cảnh, nội dung chính, hành động cần làm, deadline nếu có, câu cảm ơn/kết phù hợp.
+- Nếu tạo poster: gồm Concept, Headline, Subline, Body copy, CTA; copy phải sắc nhưng vẫn đúng văn hóa nội bộ.
+- Nếu tạo kế hoạch: có mục tiêu, insight/ngữ cảnh, thông điệp chính, kênh, timeline và checklist triển khai.
 - Nếu người dùng chỉ chào hỏi hoặc nhập quá ngắn như "hi", "hello", "chào": không tạo nhiều phiên bản; chỉ chào lại một câu và hỏi họ muốn viết nội dung gì.
 - Nếu yêu cầu chưa phải một task truyền thông rõ ràng, hỏi lại tối đa 2 thông tin cần thiết thay vì tự tạo nội dung lan man.
 - Nếu thiếu vài thông tin phụ nhưng vẫn hiểu task chính, tạo bản nháp dùng placeholder ngắn như [deadline], [link], [người gửi].
 
-Định dạng ưu tiên: một câu trả lời gọn + nội dung copy-ready. Không trang trí quá mức.`;
+Định dạng ưu tiên: nội dung copy-ready, có tiêu đề rõ khi cần, trình bày bằng đoạn văn và bullet ngắn vừa đủ. Không trang trí quá mức.`;
 
 const INTENT_GUIDES: Record<string, { instruction: string; maxTokens: number; temperature: number }> = {
   gtalk: {
-    maxTokens: 650,
-    temperature: 0.45,
+    maxTokens: 1200,
+    temperature: 0.58,
     instruction: `
 Yêu cầu định dạng cho GTalk:
-- Chỉ trả về 3 phiên bản: "Phiên bản 1", "Phiên bản 2", "Phiên bản 3".
-- Mỗi phiên bản gồm một đoạn GTalk hoàn chỉnh, 2-4 câu.
-- Không tiêu đề phụ dài, không ưu điểm, không hướng dẫn, không bảng, không emoji.
-- Nội dung phải copy gửi được ngay.
-- Nếu thiếu thông tin, dùng placeholder [deadline], [link], [đối tượng].`,
+- Trả về 1 bản chính hoàn chỉnh, văn phòng, chỉn chu, có thể gửi ngay.
+- Độ dài mặc định 5-9 đoạn ngắn hoặc bullet nhẹ nếu cần nhấn mốc thời gian/hành động.
+- Cấu trúc nên có: mở đầu thu hút nhưng không phô, bối cảnh, nội dung chính, CTA rõ, câu kết có tinh thần đồng hành.
+- Nếu cần thêm lựa chọn, chỉ thêm "Phiên bản ngắn hơn" sau bản chính.
+- Không giải thích ưu điểm, không viết hướng dẫn ngoài nội dung gửi.
+- Nếu thiếu thông tin, dùng placeholder [deadline], [link], [đối tượng], [người gửi].`,
   },
   email: {
-    maxTokens: 900,
-    temperature: 0.45,
+    maxTokens: 1300,
+    temperature: 0.55,
     instruction: `
 Yêu cầu định dạng cho Email:
-- Tối đa 2 phiên bản.
-- Mỗi phiên bản gồm Subject và Body.
-- Body ngắn, rõ bối cảnh, hành động cần làm, deadline nếu có.
+- Trả về 1 email chính. Nếu người dùng yêu cầu nhiều option thì tối đa 2 phiên bản.
+- Gồm Subject và Body.
+- Body viết theo văn phong văn phòng: lời chào, bối cảnh, nội dung chính, ý nghĩa/tác động, hành động cần làm, deadline nếu có, hỗ trợ/liên hệ, lời cảm ơn/kết.
+- Độ dài mặc định 250-500 từ nếu brief đủ thông tin.
 - Không bảng, không emoji, không giải thích ngoài nội dung email.`,
   },
   poster: {
-    maxTokens: 900,
-    temperature: 0.55,
+    maxTokens: 1100,
+    temperature: 0.62,
     instruction: `
 Yêu cầu định dạng cho Poster:
-- Tối đa 2 concept.
-- Mỗi concept gồm: Concept, Headline, Subline, Body copy, CTA.
-- Copy ngắn, sắc, phù hợp truyền thông nội bộ.
-- Không giải thích dài, không bảng.`,
+- Trả về tối đa 2 concept.
+- Mỗi concept gồm: Big idea, Headline, Subline, Body copy, CTA, Gợi ý visual direction.
+- Copy cần có insight, không chỉ liệt kê thông tin.
+- Văn phong sắc gọn hơn GTalk/email nhưng vẫn chuyên nghiệp và phù hợp nội bộ.
+- Không bảng, không giải thích dài ngoài phần concept.`,
   },
   plan: {
-    maxTokens: 1200,
-    temperature: 0.45,
+    maxTokens: 1600,
+    temperature: 0.5,
     instruction: `
 Yêu cầu định dạng cho kế hoạch:
-- Tối đa 5 giai đoạn/bước.
-- Mỗi bước có Mục tiêu, Kênh, Nội dung chính, Deadline gợi ý nếu có.
-- Không bảng markdown; dùng bullet ngắn.`,
+- Viết như Senior IC/Marketing planning note, không chỉ checklist khô.
+- Gồm: Mục tiêu, Đối tượng, Insight/ngữ cảnh, Key message, Tone, Kênh triển khai, Timeline 4-6 giai đoạn, Checklist cần chuẩn bị, Rủi ro cần lưu ý.
+- Mỗi giai đoạn có mục tiêu, nội dung chính, kênh, owner/deadline placeholder nếu thiếu.
+- Không bảng markdown; dùng heading ngắn và bullet rõ ràng.`,
   },
   survey: {
-    maxTokens: 1000,
-    temperature: 0.45,
+    maxTokens: 1300,
+    temperature: 0.52,
     instruction: `
 Yêu cầu định dạng cho khảo sát:
-- Gồm lời dẫn ngắn và tối đa 8 câu hỏi.
-- Câu hỏi rõ, dễ hiểu, phù hợp nhân viên.
-- Không bảng, không emoji.`,
+- Gồm lời dẫn chuyên nghiệp, giải thích mục đích khảo sát và tối đa 10 câu hỏi.
+- Câu hỏi rõ, trung lập, dễ hiểu, phù hợp nhân viên.
+- Nếu phù hợp, thêm lời cảm ơn/kết để tăng động lực tham gia.
+- Không bảng, không emoji mặc định.`,
   },
   townhall: {
-    maxTokens: 1000,
-    temperature: 0.5,
+    maxTokens: 1400,
+    temperature: 0.56,
     instruction: `
 Yêu cầu định dạng cho Town Hall:
-- Gồm theme, key message, agenda tối đa 5 mục, lời dẫn MC ngắn.
-- Không bảng, không emoji, không giải thích dài.`,
+- Gồm theme, communication objective, key message, agenda tối đa 6 mục, lời dẫn MC mở đầu và lời chuyển ý ngắn.
+- Văn phong trang trọng vừa phải, tạo cảm giác kết nối nội bộ.
+- Không bảng, không emoji mặc định, không giải thích dài ngoài nội dung cần dùng.`,
   },
   generic: {
-    maxTokens: 850,
-    temperature: 0.5,
+    maxTokens: 1200,
+    temperature: 0.55,
     instruction: `
 Yêu cầu định dạng chung:
 - Nếu input chỉ là lời chào hoặc chưa có yêu cầu truyền thông rõ ràng, trả lời đúng 1 đoạn ngắn để hỏi người dùng muốn viết gì.
 - Không tự tạo nhiều câu chào, không đưa nhiều lựa chọn nếu người dùng không yêu cầu.
-- Nếu là yêu cầu truyền thông rõ ràng, trả lời gọn và copy-ready.
-- Không bảng, không emoji, không code block, không phần hướng dẫn/kết luận không cần thiết.`,
+- Nếu là yêu cầu truyền thông rõ ràng, viết theo văn phong Senior Content/Marketing: có bối cảnh, thông điệp chính, CTA, câu kết.
+- Độ dài mặc định vừa-dài, đủ ý và copy-ready.
+- Không bảng, không emoji mặc định, không code block, không phần hướng dẫn/kết luận không cần thiết.`,
   },
 };
 
@@ -369,7 +384,7 @@ export function AIStudio() {
         <div>
           <p className="eyebrow">EX AI Studio</p>
           <h1 className="ai-title">AI Assistant</h1>
-          <p className="ai-subtitle">Tạo nội dung nội bộ gọn, rõ, copy dùng ngay. AI sẽ tham chiếu Team Voice khi có bài mẫu active.</p>
+          <p className="ai-subtitle">Viết nội dung nội bộ theo văn phong Senior Content/Marketing, chỉn chu, có chiều sâu và tham chiếu Team Voice.</p>
         </div>
 
         <div className="ai-section-label">Hành động nhanh</div>
@@ -393,7 +408,7 @@ export function AIStudio() {
             <p className="ai-chat-kicker">Copy-ready output</p>
             <h2>IC Content Assistant</h2>
           </div>
-          <div className="ai-chat-note">Đọc {styleReferences.filter(ref => ref.isActive).length} bài mẫu Team Voice</div>
+          <div className="ai-chat-note">Senior IC style · Đọc {styleReferences.filter(ref => ref.isActive).length} bài mẫu</div>
         </div>
 
         <div className="ai-messages hide-scrollbar">
@@ -401,7 +416,7 @@ export function AIStudio() {
             <div className="ai-empty-state">
               <div className="ai-empty-mark">AI</div>
               <h3>Bạn muốn viết nội dung gì?</h3>
-              <p>Chọn hành động nhanh hoặc nhập yêu cầu. AI sẽ trả lời ngắn, đúng format và dễ copy hơn.</p>
+              <p>Chọn hành động nhanh hoặc nhập yêu cầu. AI sẽ viết theo văn phong văn phòng, mạch lạc, có bối cảnh và CTA rõ.</p>
               <div className="ai-suggestion-grid">
                 {['Viết GTalk nhắc nhân viên hoàn thành khảo sát EES', 'Soạn email thông báo Town Hall tháng 7', 'Tạo poster launch chiến dịch nội bộ'].map((ex) => (
                   <button key={ex} onClick={() => handleSend(ex)}>{ex}</button>
