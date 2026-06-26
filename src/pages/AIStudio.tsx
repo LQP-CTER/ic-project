@@ -469,7 +469,7 @@ export function AIStudio() {
         <div>
           <p className="eyebrow">EX AI Studio</p>
           <h1 className="ai-title">AI Assistant</h1>
-          <p className="ai-subtitle">Viết nội dung nội bộ và tạo Visual Brief/Design Prompt theo văn phong Senior Content/Marketing, chỉn chu, có chiều sâu và tham chiếu Team Voice.</p>
+          <p className="ai-subtitle">Chọn một tác vụ, thêm ngữ cảnh dự án nếu cần, rồi để AI soạn bản dùng ngay.</p>
         </div>
 
         <button type="button" className="ai-visual-brief-card" onClick={() => handleQuickAction(QUICK_ACTIONS.find(action => action.id === 'visualBrief')!)}>
@@ -480,7 +480,7 @@ export function AIStudio() {
 
         <div className="ai-section-label">Hành động nhanh</div>
         <div className="ai-action-list">
-          {QUICK_ACTIONS.map(action => (
+          {QUICK_ACTIONS.filter(action => action.id !== 'visualBrief').map(action => (
             <button key={action.id} onClick={() => handleQuickAction(action)} className={`ai-action ${selectedTool === action.id ? 'ai-action-active' : ''}`}>
               <span>{action.title}</span>
               <small>{action.description}</small>
@@ -499,7 +499,7 @@ export function AIStudio() {
             <p className="ai-chat-kicker">Copy-ready output</p>
             <h2>IC Content Assistant</h2>
           </div>
-          <div className="ai-chat-note">Memory on · Visual Brief ready · Đọc {styleReferences.filter(ref => ref.isActive).length} bài mẫu</div>
+          <div className="ai-chat-note">Memory on · {styleReferences.filter(ref => ref.isActive).length} bài mẫu</div>
         </div>
 
         <div className="ai-messages hide-scrollbar">
@@ -509,7 +509,7 @@ export function AIStudio() {
               <h3>Bạn muốn viết nội dung gì?</h3>
               <p>Chọn hành động nhanh hoặc nhập yêu cầu. AI có thể viết copy-ready content hoặc tạo visual brief/prompt thiết kế để chuyển sang Canva, Figma hoặc image tool.</p>
               <div className="ai-suggestion-grid">
-                {['Viết GTalk nhắc nhân viên hoàn thành khảo sát EES', 'Soạn email thông báo Town Hall tháng 7', 'Tạo Visual Brief cho banner GTalk launch chiến dịch nội bộ'].map((ex) => (
+                {['Viết GTalk nhắc khảo sát EES', 'Soạn email Town Hall tháng 7', 'Tạo Visual Brief cho banner GTalk'].map((ex) => (
                   <button key={ex} onClick={() => handleSend(ex)}>{ex}</button>
                 ))}
               </div>
@@ -593,7 +593,7 @@ export function AIStudio() {
             value={inputValue}
             onChange={e => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ví dụ: Tạo Visual Brief cho banner GTalk nhắc nhân viên hoàn thành khảo sát EES trước thứ Sáu..."
+            placeholder="Nhập yêu cầu, ví dụ: Tạo Visual Brief cho banner GTalk nhắc khảo sát EES..."
             rows={1}
           />
           <div className="ai-composer-footer">

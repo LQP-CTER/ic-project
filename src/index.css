@@ -2709,3 +2709,121 @@ body {
   line-height: 1.55;
   font-weight: 650;
 }
+/* AI compact UX refresh */
+.ai-shell {
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 16px;
+}
+
+.ai-sidebar {
+  padding: 18px;
+  gap: 14px;
+}
+
+.ai-title {
+  font-size: 26px;
+}
+
+.ai-subtitle {
+  margin-top: 6px;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.ai-action-list {
+  gap: 8px;
+}
+
+.ai-action {
+  padding: 11px 12px;
+  border-radius: 14px;
+}
+
+.ai-action span {
+  font-size: 13px;
+}
+
+.ai-action small {
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.ai-chat-header {
+  min-height: 78px;
+  padding: 18px 22px;
+}
+
+.ai-chat-header h2 {
+  font-size: 18px;
+}
+
+.ai-chat-note {
+  padding: 8px 11px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.ai-empty-state {
+  max-width: 620px;
+  gap: 12px;
+  padding: 24px;
+}
+
+.ai-empty-mark {
+  width: 42px;
+  height: 42px;
+  border-radius: 16px;
+  font-size: 13px;
+}
+
+.ai-empty-state h3 {
+  font-size: 24px;
+}
+
+.ai-empty-state p {
+  max-width: 520px;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.ai-suggestion-grid {
+  max-width: 560px;
+  gap: 8px;
+}
+
+.ai-suggestion-grid button {
+  min-height: 40px;
+  padding: 9px 14px;
+  border-radius: 14px;
+  font-size: 13px;
+}
+
+.ai-visual-brief-card {
+  gap: 5px;
+  padding: 13px;
+  border-radius: 17px;
+  box-shadow: 0 10px 24px rgba(234,88,12,.10);
+}
+
+.ai-visual-brief-card span {
+  padding: 4px 7px;
+  font-size: 9px;
+}
+
+.ai-visual-brief-card strong {
+  font-size: 14px;
+}
+
+.ai-visual-brief-card small {
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.ai-context-zone {
+  border-top: 1px solid var(--line);
+}
+
+.ai-composer textarea {
+  min-height: 52px;
+}
