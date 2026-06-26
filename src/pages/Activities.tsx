@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { Activity, Project, Status } from '../data/mockData';
 import { getDeadlineIndicator } from '../data/mockData';
+import { parseChecklist } from '../lib/checklist';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
@@ -16,15 +17,16 @@ import {
   useDroppable,
   type DragStartEvent,
   type DragEndEvent,
+  type DragOverEvent,
 } from '@dnd-kit/core';
 
 const STATUSES: Status[] = ['Chưa bắt đầu', 'Đang thực hiện', 'Chờ duyệt', 'Hoàn thành'];
 
-const STATUS_COLORS: Record<string, { bg: string; text: string; border: string; top: string }> = {
-  'Chưa bắt đầu': { bg: 'bg-surface-tertiary', text: 'text-text-secondary', border: 'border-border', top: 'border-t-text-tertiary' },
-  'Đang thực hiện': { bg: 'bg-primary-light', text: 'text-primary', border: 'border-primary/20', top: 'border-t-primary' },
-  'Chờ duyệt': { bg: 'bg-warning-light', text: 'text-warning', border: 'border-warning/20', top: 'border-t-warning' },
-  'Hoàn thành': { bg: 'bg-success-light', text: 'text-success', border: 'border-success/20', top: 'border-t-success' },
+const STATUS_COLORS: Record<string, { bg: string; text: string; border: string; top: string; label: string }> = {
+  'Chưa bắt đầu': { bg: 'bg-surface-tertiary', text: 'text-text-secondary', border: 'border-border', top: 'border-t-text-tertiary', label: 'Backlog' },
+  'Đang thực hiện': { bg: 'bg-primary-light', text: 'text-primary', border: 'border-primary/20', top: 'border-t-primary', label: 'In progress' },
+  'Chờ duyệt': { bg: 'bg-warning-light', text: 'text-warning', border: 'border-warning/20', top: 'border-t-warning', label: 'Review' },
+  'Hoàn thành': { bg: 'bg-success-light', text: 'text-success', border: 'border-success/20', top: 'border-t-success', label: 'Done' },
 };
 
 const PRIORITY_STYLE: Record<string, string> = {
@@ -41,13 +43,37 @@ const PROJECT_STATUS_STYLE: Record<string, string> = {
   'Kết thúc': 'bg-danger-light text-danger',
 };
 
+const PRIORITY_ORDER: Record<Activity['priority'], number> = { High: 0, Medium: 1, Low: 2 };
+
 type ModalMode = 'none' | 'create' | 'detail' | 'edit' | 'newProject' | 'editProject';
 type PageView = 'projects' | 'kanban' | 'list';
+type PriorityFilter = 'all' | Activity['priority'];
+type DeadlineFilter = 'all' | 'overdue' | 'due-soon' | 'no-deadline';
+type SortMode = 'deadline' | 'priority' | 'status';
 
 function formatDate(d: string) {
   if (!d) return '';
   const dt = new Date(d);
   return `${dt.getDate()}/${dt.getMonth() + 1}`;
+}
+
+function getChecklistProgress(activity: Activity) {
+  const items = parseChecklist(activity.checklist);
+  const done = items.filter(item => item.done).length;
+  const percent = items.length === 0 ? 0 : Math.round((done / items.length) * 100);
+  return { total: items.length, done, percent };
+}
+
+function sortActivities(items: Activity[], sortMode: SortMode) {
+  return [...items].sort((a, b) => {
+    if (sortMode === 'priority') {
+      return PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority] || (a.deadline || '9999-12-31').localeCompare(b.deadline || '9999-12-31');
+    }
+    if (sortMode === 'status') {
+      return STATUSES.indexOf(a.status) - STATUSES.indexOf(b.status) || PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
+    }
+    return (a.deadline || '9999-12-31').localeCompare(b.deadline || '9999-12-31') || PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
+  });
 }
 
 function DraggableCard({ activity, onOpen, getProjectName, showProject }: {
@@ -58,18 +84,25 @@ function DraggableCard({ activity, onOpen, getProjectName, showProject }: {
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: activity.id });
   const computed = getDeadlineIndicator(activity);
+  const checklist = getChecklistProgress(activity);
+
   return (
-    <div
+    <article
       ref={setNodeRef}
       onClick={() => onOpen(activity)}
-      className={`p-3.5 bg-surface rounded-lg border border-border cursor-pointer transition-all duration-150 hover:shadow-sm hover:border-primary/30 ${isDragging ? 'opacity-50' : ''}`}
+      className={`activity-kanban-card ${computed.isOverdue ? 'activity-kanban-card-overdue' : ''} ${isDragging ? 'activity-kanban-card-dragging' : ''}`}
     >
       <div className="activity-card-title-row">
-        <p className="text-sm font-semibold text-text-primary leading-snug mb-2">{activity.name}</p>
+        <div className="min-w-0 flex-1">
+          {showProject && (
+            <p className="activity-card-project">{getProjectName(activity.projectId)}</p>
+          )}
+          <h3>{activity.name}</h3>
+        </div>
         <button
           type="button"
           className="activity-drag-handle"
-          aria-label="Kéo để đổi trạng thái"
+          aria-label="Kéo task sang pipeline khác"
           onClick={event => event.stopPropagation()}
           {...listeners}
           {...attributes}
@@ -77,60 +110,73 @@ function DraggableCard({ activity, onOpen, getProjectName, showProject }: {
           Kéo
         </button>
       </div>
-      {showProject && (
-        <p className="text-xs text-primary font-medium mb-2">{getProjectName(activity.projectId)}</p>
-      )}
-      <div className="flex flex-wrap gap-1.5 mb-2">
-        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${PRIORITY_STYLE[activity.priority]}`}>
-          {activity.priority}
-        </span>
+
+      {activity.description && <p className="activity-card-description line-clamp-2">{activity.description}</p>}
+
+      <div className="activity-card-tags">
+        <span className={`activity-card-pill border ${PRIORITY_STYLE[activity.priority]}`}>{activity.priority}</span>
+        {activity.channel && <span className="activity-card-pill activity-card-pill-neutral">{activity.channel}</span>}
         {computed.indicator && (
-          <span className={`text-[10px] font-medium px-2 py-0.5 rounded border ${computed.isOverdue ? 'bg-danger-light text-danger border-danger/20' : 'bg-surface-tertiary text-text-tertiary border-border'}`}>
+          <span className={`activity-card-pill border ${computed.isOverdue ? 'bg-danger-light text-danger border-danger/20' : 'bg-surface-tertiary text-text-tertiary border-border'}`}>
             {computed.indicator}
           </span>
         )}
       </div>
-      <div className="flex items-center justify-between">
-        {activity.assignee && (
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-white text-[10px] font-bold">
-              {activity.assignee.charAt(0).toUpperCase()}
-            </div>
-            <span className="text-xs text-text-secondary">{activity.assignee.split(' ').slice(-1)[0]}</span>
+
+      {checklist.total > 0 && (
+        <div className="activity-card-checklist">
+          <div><span style={{ width: `${checklist.percent}%` }} /></div>
+          <p>{checklist.done}/{checklist.total} checklist</p>
+        </div>
+      )}
+
+      <div className="activity-card-footer">
+        {activity.assignee ? (
+          <div className="activity-card-assignee">
+            <span>{activity.assignee.charAt(0).toUpperCase()}</span>
+            <strong>{activity.assignee.split(' ').slice(-1)[0]}</strong>
           </div>
-        )}
-        {activity.deadline && (
-          <span className={`text-xs ${computed.isOverdue ? 'text-danger font-medium' : 'text-text-tertiary'}`}>
-            {formatDate(activity.deadline)}
-          </span>
-        )}
+        ) : <span className="activity-card-muted">Chưa có owner</span>}
+        {activity.deadline ? (
+          <time className={computed.isOverdue ? 'danger' : ''}>{formatDate(activity.deadline)}</time>
+        ) : <span className="activity-card-muted">No due</span>}
       </div>
-    </div>
+    </article>
   );
 }
-function DroppableColumn({ status, children, count }: {
+
+function DroppableColumn({ status, children, count, total, isActiveDrop, onQuickCreate }: {
   status: Status;
   children: React.ReactNode;
   count: number;
+  total: number;
+  isActiveDrop: boolean;
+  onQuickCreate: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const colors = STATUS_COLORS[status];
+  const percent = total === 0 ? 0 : Math.round((count / total) * 100);
 
   return (
-    <div
+    <section
       ref={setNodeRef}
-      className={`flex flex-col rounded-xl border-2 border-t-[3px] transition-all duration-200 ${colors.top} ${isOver ? 'border-primary/50 bg-primary-50' : 'border-border bg-surface-secondary'}`}
+      className={`activity-kanban-column ${colors.top} ${isOver || isActiveDrop ? 'activity-kanban-column-over' : ''}`}
     >
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-        <span className="text-sm font-semibold text-text-primary">{status}</span>
-        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${colors.bg} ${colors.text}`}>
-          {count}
-        </span>
-      </div>
-      <div className="flex-1 p-3 flex flex-col gap-2 min-h-[100px]">
+      <header className="activity-kanban-column-head">
+        <div>
+          <span>{colors.label}</span>
+          <h2>{status}</h2>
+        </div>
+        <strong className={`${colors.bg} ${colors.text}`}>{count}</strong>
+      </header>
+      <div className="activity-kanban-column-progress"><span style={{ width: `${percent}%` }} /></div>
+      <div className="activity-kanban-column-body">
         {children}
       </div>
-    </div>
+      <button type="button" className="activity-column-create" onClick={onQuickCreate}>
+        + Tạo task ở cột này
+      </button>
+    </section>
   );
 }
 
@@ -222,13 +268,55 @@ export function Activities() {
   const [deletingProject, setDeletingProject] = useState<Project | null>(null);
   const [viewMode, setViewMode] = useState<'board' | 'list'>('board');
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeDropStatus, setActiveDropStatus] = useState<Status | null>(null);
+  const [createDefaults, setCreateDefaults] = useState<Partial<Activity> | undefined>(undefined);
+  const [query, setQuery] = useState('');
+  const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('all');
+  const [assigneeFilter, setAssigneeFilter] = useState('all');
+  const [deadlineFilter, setDeadlineFilter] = useState<DeadlineFilter>('all');
+  const [sortMode, setSortMode] = useState<SortMode>('deadline');
 
   const filteredActivities = selectedProjectId ? activities.filter(a => a.projectId === selectedProjectId) : activities;
   const currentProject = selectedProjectId ? projects.find(p => p.id === selectedProjectId) : null;
-  const getProjectName = (id: string) => projects.find(p => p.id === id)?.name || 'Không có dự án';
+  const getProjectName = useCallback((id: string) => projects.find(p => p.id === id)?.name || 'Không có dự án', [projects]);
   const getProjectActivities = (pid: string) => activities.filter(a => a.projectId === pid);
 
-  const handleCreateActivity = (newAct: Omit<Activity, 'id'>) => { addActivity(newAct); setModalMode('none'); };
+  const assignees = useMemo(() => {
+    return Array.from(new Set(filteredActivities.map(a => a.assignee).filter(Boolean))).sort();
+  }, [filteredActivities]);
+
+  const visibleActivities = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const next = filteredActivities.filter(activity => {
+      const deadlineState = getDeadlineIndicator(activity);
+      const content = [activity.name, activity.description, activity.assignee, activity.channel, activity.notes, getProjectName(activity.projectId)].join(' ').toLowerCase();
+      if (q && !content.includes(q)) return false;
+      if (priorityFilter !== 'all' && activity.priority !== priorityFilter) return false;
+      if (assigneeFilter !== 'all' && activity.assignee !== assigneeFilter) return false;
+      if (deadlineFilter === 'overdue' && !deadlineState.isOverdue) return false;
+      if (deadlineFilter === 'due-soon' && deadlineState.indicator !== 'Sắp đến hạn') return false;
+      if (deadlineFilter === 'no-deadline' && activity.deadline) return false;
+      return true;
+    });
+    return sortActivities(next, sortMode);
+  }, [assigneeFilter, deadlineFilter, filteredActivities, getProjectName, priorityFilter, query, sortMode]);
+
+  const boardMetrics = useMemo(() => {
+    return {
+      total: visibleActivities.length,
+      overdue: visibleActivities.filter(a => getDeadlineIndicator(a).isOverdue).length,
+      dueSoon: visibleActivities.filter(a => getDeadlineIndicator(a).indicator === 'Sắp đến hạn').length,
+      high: visibleActivities.filter(a => a.priority === 'High').length,
+      review: visibleActivities.filter(a => a.status === 'Chờ duyệt').length,
+      done: visibleActivities.filter(a => a.status === 'Hoàn thành').length,
+    };
+  }, [visibleActivities]);
+
+  const handleCreateActivity = (newAct: Omit<Activity, 'id'>) => {
+    addActivity(newAct);
+    setCreateDefaults(undefined);
+    setModalMode('none');
+  };
   const handleUpdateActivity = (updates: Omit<Activity, 'id'>) => {
     if (selectedActivity) { updateActivity(selectedActivity.id, updates); setSelectedActivity({ ...selectedActivity, ...updates }); }
     setModalMode('detail');
@@ -241,6 +329,26 @@ export function Activities() {
     setSelectedActivity(prev => prev?.id === activity.id ? { ...prev, status } : prev);
   };
 
+  const openCreateActivity = (defaults?: Partial<Activity>) => {
+    setCreateDefaults(defaults);
+    setModalMode('create');
+  };
+
+  const openColumnCreate = (status: Status) => {
+    openCreateActivity({
+      projectId: selectedProjectId ?? projects[0]?.id ?? '',
+      status,
+    });
+  };
+
+  const resetFilters = () => {
+    setQuery('');
+    setPriorityFilter('all');
+    setAssigneeFilter('all');
+    setDeadlineFilter('all');
+    setSortMode('deadline');
+  };
+
   const handleSaveProject = (data: Omit<Project, 'id'>) => {
     if (editingProject) { updateProject(editingProject.id, data); } else { addProject(data); }
     setModalMode('none'); setEditingProject(null);
@@ -251,12 +359,17 @@ export function Activities() {
     if (selectedProjectId === pid) { setSelectedProjectId(null); setPageView('projects'); }
   };
 
-  const openProject = (pid: string) => { setSelectedProjectId(pid); setPageView('kanban'); setViewMode('board'); };
+  const openProject = (pid: string) => { setSelectedProjectId(pid); setPageView('kanban'); setViewMode('board'); resetFilters(); };
 
   const onDragStart = (event: DragStartEvent) => { setActiveId(event.active.id as string); };
+  const onDragOver = (event: DragOverEvent) => {
+    const overId = event.over?.id as Status | undefined;
+    setActiveDropStatus(overId && STATUSES.includes(overId) ? overId : null);
+  };
   const onDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveId(null);
+    setActiveDropStatus(null);
     if (over && STATUSES.includes(over.id as Status)) {
       const activity = activities.find(item => item.id === active.id);
       if (activity) handleChangeActivityStatus(activity, over.id as Status);
@@ -264,6 +377,7 @@ export function Activities() {
   };
 
   const activeActivity = activeId ? activities.find(a => a.id === activeId) : null;
+  const createInitialData = createDefaults ? { ...createDefaults } as Activity : (selectedProjectId ? { projectId: selectedProjectId } as Activity : undefined);
 
   return (
     <div className="page-shell flex flex-col gap-5 h-full min-h-0">
@@ -271,7 +385,7 @@ export function Activities() {
         <div className="flex items-center gap-3">
           {pageView !== 'projects' && (
             <button
-              onClick={() => { setPageView('projects'); setSelectedProjectId(null); }}
+              onClick={() => { setPageView('projects'); setSelectedProjectId(null); resetFilters(); }}
               className="px-3 py-1.5 rounded-lg border border-border bg-surface text-text-secondary text-sm hover:bg-surface-tertiary transition-colors"
             >
               Quay lại dự án
@@ -282,7 +396,7 @@ export function Activities() {
               {pageView === 'projects' ? 'Quản lý hoạt động' : currentProject?.name || 'Tất cả dự án'}
             </h1>
             <p className="page-subtitle !text-xs !mt-1">
-              {pageView === 'projects' ? `${projects.length} dự án / ${activities.length} hoạt động` : `${filteredActivities.length} hoạt động trong dự án này`}
+              {pageView === 'projects' ? `${projects.length} dự án / ${activities.length} hoạt động` : `${visibleActivities.length}/${filteredActivities.length} hoạt động đang hiển thị`}
             </p>
           </div>
         </div>
@@ -301,7 +415,7 @@ export function Activities() {
                   </button>
                 ))}
               </div>
-              <Button onClick={() => setModalMode('create')}>Tạo hoạt động</Button>
+              <Button onClick={() => openCreateActivity(selectedProjectId ? { projectId: selectedProjectId } : undefined)}>Tạo hoạt động</Button>
             </>
           )}
         </div>
@@ -350,38 +464,96 @@ export function Activities() {
       )}
 
       {pageView !== 'projects' && (
-        <div className="flex gap-2 flex-wrap shrink-0 border-b border-border pb-3">
-          <button
-            onClick={() => { setSelectedProjectId(null); setPageView('projects'); }}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-medium border transition-all ${selectedProjectId === null ? 'bg-primary-light border-primary/30 text-primary' : 'border-border text-text-secondary hover:bg-surface-tertiary'}`}
-          >
-            Tất cả dự án
-          </button>
-          {projects.map(p => (
+        <>
+          <div className="activity-board-scope">
             <button
-              key={p.id}
-              onClick={() => setSelectedProjectId(p.id)}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-medium border transition-all ${selectedProjectId === p.id ? 'bg-primary-light border-primary/30 text-primary' : 'border-border text-text-secondary hover:bg-surface-tertiary'}`}
+              onClick={() => { setSelectedProjectId(null); resetFilters(); }}
+              className={selectedProjectId === null ? 'active' : ''}
             >
-              {p.name} <span className="opacity-60 ml-1">{getProjectActivities(p.id).length}</span>
+              Tất cả dự án <span>{activities.length}</span>
             </button>
-          ))}
-        </div>
+            {projects.map(p => (
+              <button
+                key={p.id}
+                onClick={() => { setSelectedProjectId(p.id); resetFilters(); }}
+                className={selectedProjectId === p.id ? 'active' : ''}
+              >
+                {p.name} <span>{getProjectActivities(p.id).length}</span>
+              </button>
+            ))}
+          </div>
+
+          <section className="activity-workbench professional-card">
+            <div className="activity-workbench-head">
+              <div>
+                <p className="eyebrow">Jira-style workbench</p>
+                <h2>Điều phối hoạt động truyền thông</h2>
+                <span>Kéo task sang cột để đổi pipeline. Click vào card để mở chi tiết, checklist và review notes.</span>
+              </div>
+              <button type="button" onClick={resetFilters}>Reset bộ lọc</button>
+            </div>
+
+            <div className="activity-workbench-metrics">
+              {[
+                { label: 'Đang hiển thị', value: boardMetrics.total },
+                { label: 'High priority', value: boardMetrics.high },
+                { label: 'Chờ duyệt', value: boardMetrics.review },
+                { label: 'Sắp đến hạn', value: boardMetrics.dueSoon },
+                { label: 'Quá hạn', value: boardMetrics.overdue },
+              ].map(metric => (
+                <div key={metric.label}>
+                  <strong>{metric.value}</strong>
+                  <span>{metric.label}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="activity-board-toolbar">
+              <input
+                value={query}
+                onChange={event => setQuery(event.target.value)}
+                placeholder="Tìm task, owner, kênh, dự án..."
+                className="form-control activity-search-input"
+              />
+              <select className="form-control" value={priorityFilter} onChange={event => setPriorityFilter(event.target.value as PriorityFilter)}>
+                <option value="all">Tất cả priority</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+              </select>
+              <select className="form-control" value={assigneeFilter} onChange={event => setAssigneeFilter(event.target.value)}>
+                <option value="all">Tất cả owner</option>
+                {assignees.map(assignee => <option key={assignee} value={assignee}>{assignee}</option>)}
+              </select>
+              <select className="form-control" value={deadlineFilter} onChange={event => setDeadlineFilter(event.target.value as DeadlineFilter)}>
+                <option value="all">Tất cả deadline</option>
+                <option value="overdue">Quá hạn</option>
+                <option value="due-soon">Sắp đến hạn</option>
+                <option value="no-deadline">Chưa có deadline</option>
+              </select>
+              <select className="form-control" value={sortMode} onChange={event => setSortMode(event.target.value as SortMode)}>
+                <option value="deadline">Sắp xếp deadline</option>
+                <option value="priority">Sắp xếp priority</option>
+                <option value="status">Sắp xếp pipeline</option>
+              </select>
+            </div>
+          </section>
+        </>
       )}
 
-      {pageView !== 'projects' && viewMode === 'board' && selectedProjectId !== null && (
-        <DndContext collisionDetection={closestCorners} onDragStart={onDragStart} onDragEnd={onDragEnd}>
-          <div className="flex-1 grid grid-cols-4 gap-4 overflow-auto pb-4 items-start">
+      {pageView !== 'projects' && viewMode === 'board' && (
+        <DndContext collisionDetection={closestCorners} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd} onDragCancel={() => { setActiveId(null); setActiveDropStatus(null); }}>
+          <div className="activity-kanban-board">
             {STATUSES.map(status => {
-              const colActs = filteredActivities.filter(a => a.status === status);
+              const colActs = visibleActivities.filter(a => a.status === status);
               return (
-                <DroppableColumn key={status} status={status} count={colActs.length}>
+                <DroppableColumn key={status} status={status} count={colActs.length} total={visibleActivities.length} isActiveDrop={activeDropStatus === status} onQuickCreate={() => openColumnCreate(status)}>
                   {colActs.map(act => (
                     <DraggableCard key={act.id} activity={act} onOpen={a => { setSelectedActivity(a); setModalMode('detail'); }} getProjectName={getProjectName} showProject={selectedProjectId === null} />
                   ))}
                   {colActs.length === 0 && (
-                    <div className="p-6 text-center text-xs text-text-tertiary border-2 border-dashed border-border rounded-lg">
-                      Chưa có hoạt động
+                    <div className="activity-column-empty">
+                      {activeId ? 'Thả task vào đây' : 'Chưa có hoạt động phù hợp'}
                     </div>
                   )}
                 </DroppableColumn>
@@ -390,28 +562,29 @@ export function Activities() {
           </div>
           <DragOverlay>
             {activeActivity ? (
-              <div className="p-3.5 bg-surface rounded-lg border-2 border-primary shadow-lg opacity-90">
-                <p className="text-sm font-semibold text-text-primary">{activeActivity.name}</p>
+              <div className="activity-drag-overlay">
+                <p>{activeActivity.name}</p>
+                <span>{activeDropStatus ? `Đang chuyển sang: ${activeDropStatus}` : 'Kéo sang cột mong muốn'}</span>
               </div>
             ) : null}
           </DragOverlay>
         </DndContext>
       )}
 
-      {pageView !== 'projects' && viewMode === 'list' && selectedProjectId !== null && (
+      {pageView !== 'projects' && viewMode === 'list' && (
         <div className="flex-1 overflow-auto table-wrap">
           <table className="data-table">
             <thead>
               <tr className="border-b border-border bg-surface-secondary">
-                {['Tên hoạt động', ...(selectedProjectId === null ? ['Dự án'] : []), 'Phụ trách', 'Deadline', 'Trạng thái'].map(h => (
+                {['Tên hoạt động', ...(selectedProjectId === null ? ['Dự án'] : []), 'Phụ trách', 'Deadline', 'Priority', 'Trạng thái'].map(h => (
                   <th key={h} className="px-4 py-3 font-semibold text-text-secondary text-left text-xs">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {filteredActivities.length === 0 ? (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-text-tertiary">Chưa có hoạt động nào.</td></tr>
-              ) : filteredActivities.map(act => {
+              {visibleActivities.length === 0 ? (
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-text-tertiary">Không có hoạt động phù hợp bộ lọc.</td></tr>
+              ) : visibleActivities.map(act => {
                 const computed = getDeadlineIndicator(act);
                 return (
                   <tr key={act.id} onClick={() => { setSelectedActivity(act); setModalMode('detail'); }}
@@ -420,6 +593,7 @@ export function Activities() {
                     {selectedProjectId === null && <td className="px-4 py-3 text-text-secondary">{getProjectName(act.projectId)}</td>}
                     <td className="px-4 py-3 text-text-secondary">{act.assignee || '—'}</td>
                     <td className={`px-4 py-3 ${computed.isOverdue ? 'text-danger font-medium' : 'text-text-secondary'}`}>{act.deadline || '—'}</td>
+                    <td className="px-4 py-3"><span className={`activity-card-pill border ${PRIORITY_STYLE[act.priority]}`}>{act.priority}</span></td>
                     <td className="px-4 py-3"><Badge status={act.status} /></td>
                   </tr>
                 );
@@ -429,8 +603,8 @@ export function Activities() {
         </div>
       )}
 
-      <Modal isOpen={modalMode === 'create'} onClose={() => setModalMode('none')} title="Tạo hoạt động mới">
-        <ActivityForm initialData={selectedProjectId ? { projectId: selectedProjectId } as Partial<Activity> as Activity : undefined} onSubmit={handleCreateActivity} onCancel={() => setModalMode('none')} />
+      <Modal isOpen={modalMode === 'create'} onClose={() => { setModalMode('none'); setCreateDefaults(undefined); }} title="Tạo hoạt động mới">
+        <ActivityForm initialData={createInitialData} onSubmit={handleCreateActivity} onCancel={() => { setModalMode('none'); setCreateDefaults(undefined); }} />
       </Modal>
 
       <Modal isOpen={modalMode === 'detail' && !!selectedActivity} onClose={() => { setModalMode('none'); setSelectedActivity(null); }} title="Chi tiết hoạt động">
