@@ -22,6 +22,7 @@ interface QuickAction {
 const QUICK_ACTIONS: QuickAction[] = [
   { id: 'gtalk', title: 'Viết GTalk', description: 'Bài truyền thông chỉn chu, văn phòng', prompt: 'Viết bài GTalk truyền thông nội bộ theo văn phong chuyên nghiệp cho ' },
   { id: 'email', title: 'Soạn Email', description: 'Email văn phòng, mạch lạc, có chiều sâu', prompt: 'Soạn email truyền thông nội bộ theo văn phong chuyên nghiệp về ' },
+  { id: 'visualBrief', title: 'Visual Brief', description: 'Brief thiết kế theo kiểu Open Design-lite', prompt: 'Tạo Visual Brief/Design Prompt Studio cho visual truyền thông nội bộ về ' },
   { id: 'poster', title: 'Tạo Poster', description: 'Concept và thông điệp có insight', prompt: 'Tạo concept và nội dung poster truyền thông nội bộ theo hướng Senior Content cho ' },
   { id: 'plan', title: 'Kế hoạch truyền thông', description: 'Plan bài bản theo mục tiêu và timeline', prompt: 'Lập kế hoạch truyền thông nội bộ chuyên nghiệp cho ' },
   { id: 'survey', title: 'Khảo sát nhân viên', description: 'Lời dẫn và câu hỏi rõ insight', prompt: 'Xây dựng nội dung khảo sát nhân viên theo văn phong chuyên nghiệp về ' },
@@ -47,6 +48,7 @@ Phong cách mặc định:
 Quy tắc theo loại nội dung:
 - Nếu tạo GTalk/Slack/Teams: ưu tiên 1 bản chính hoàn chỉnh, văn phòng và có thể gửi ngay. Nếu phù hợp, thêm 1 phiên bản thay thế ngắn hơn. Không đưa 3 phiên bản rời rạc mặc định.
 - Nếu tạo email: gồm Subject và Body. Body có lời chào, bối cảnh, nội dung chính, hành động cần làm, deadline nếu có, câu cảm ơn/kết phù hợp.
+- Nếu tạo Visual Brief: đóng vai Senior IC Strategist kiêm Creative Director. Trả về brief thiết kế dùng được cho designer/Canva/Figma/image model, gồm mục tiêu visual, audience, key message, layout, hierarchy chữ, copy trên visual, màu sắc, mood, prompt tạo ảnh, negative prompt và checklist review.
 - Nếu tạo poster: gồm Concept, Headline, Subline, Body copy, CTA; copy phải sắc nhưng vẫn đúng văn hóa nội bộ.
 - Nếu tạo kế hoạch: có mục tiêu, insight/ngữ cảnh, thông điệp chính, kênh, timeline và checklist triển khai.
 - Nếu người dùng chỉ chào hỏi hoặc nhập quá ngắn như "hi", "hello", "chào": không tạo nhiều phiên bản; chỉ chào lại một câu và hỏi họ muốn viết nội dung gì.
@@ -56,6 +58,27 @@ Quy tắc theo loại nội dung:
 Định dạng ưu tiên: nội dung copy-ready, có tiêu đề rõ khi cần, trình bày bằng đoạn văn và bullet ngắn vừa đủ. Không trang trí quá mức.`;
 
 const INTENT_GUIDES: Record<string, { instruction: string; maxTokens: number; temperature: number }> = {
+  visualBrief: {
+    maxTokens: 1700,
+    temperature: 0.58,
+    instruction: `
+Yêu cầu định dạng cho Visual Brief / Design Prompt Studio:
+- Trả về một brief thiết kế hoàn chỉnh theo kiểu Open Design-lite, dùng được cho designer hoặc copy sang Canva/Figma/image generation tool.
+- Không tạo ảnh thật. Không nói rằng đã tạo ảnh. Chỉ tạo visual direction và prompt.
+- Cấu trúc bắt buộc:
+  1. Creative objective: mục tiêu visual và cảm xúc cần tạo.
+  2. Audience & context: người xem, bối cảnh tiếp nhận, điều họ cần hiểu/làm.
+  3. Key message hierarchy: headline, subheadline, supporting copy, CTA, thông tin bắt buộc.
+  4. Layout direction: bố cục poster/banner rõ ràng theo từng vùng: top/middle/bottom hoặc left/right.
+  5. Art direction: màu sắc, typography, mood, background, hình ảnh/chất liệu nên dùng; lưu ý không dùng icon mặc định nếu user yêu cầu professional/no icon.
+  6. Copy trên visual: bản chữ có thể đặt trực tiếp lên thiết kế.
+  7. Prompt cho image/design tool: viết bằng tiếng Anh, giàu mô tả, chuyên nghiệp, không nhắc thông tin riêng chưa được cung cấp.
+  8. Negative prompt: những thứ cần tránh như cluttered layout, childish icon, random logo, distorted text, excessive emoji.
+  9. Review checklist: 5-7 tiêu chí để team EX duyệt trước khi publish.
+- Ưu tiên visual cho truyền thông nội bộ: GTalk banner, email header, poster văn phòng, slide announcement.
+- Nếu thiếu thông tin, dùng placeholder [deadline], [link], [logo], [brand color], [người gửi] và ghi rõ cần bổ sung.
+- Không dùng bảng markdown, không code block, không emoji mặc định.`,
+  },
   gtalk: {
     maxTokens: 1200,
     temperature: 0.58,
@@ -137,6 +160,7 @@ function detectIntent(text: string, selectedTool: string | null): keyof typeof I
   const lower = text.toLowerCase();
   if (lower.includes('gtalk') || lower.includes('slack') || lower.includes('teams') || lower.includes('tin nhắn')) return 'gtalk';
   if (lower.includes('email') || lower.includes('mail')) return 'email';
+  if (lower.includes('visual brief') || lower.includes('design prompt') || lower.includes('key visual') || lower.includes('creative direction') || lower.includes('art direction') || lower.includes('thiết kế') || lower.includes('hình ảnh')) return 'visualBrief';
   if (lower.includes('poster') || lower.includes('banner')) return 'poster';
   if (lower.includes('kế hoạch') || lower.includes('plan') || lower.includes('timeline')) return 'plan';
   if (lower.includes('khảo sát') || lower.includes('survey')) return 'survey';
@@ -149,7 +173,7 @@ function isLowSignalPrompt(text: string) {
   const greetings = new Set(['hi', 'hello', 'hey', 'chào', 'xin chào', 'alo', 'hola']);
   if (greetings.has(normalized)) return true;
   const wordCount = normalized.split(/\s+/).filter(Boolean).length;
-  const hasCommunicationIntent = /(viết|soạn|tạo|lập|sửa|rewrite|email|gtalk|slack|teams|poster|kế hoạch|plan|khảo sát|survey|town hall|thông báo|nhắc|reminder)/i.test(text);
+  const hasCommunicationIntent = /(viết|soạn|tạo|lập|sửa|rewrite|email|gtalk|slack|teams|poster|banner|visual|brief|design|thiết kế|hình ảnh|key visual|kế hoạch|plan|khảo sát|survey|town hall|thông báo|nhắc|reminder)/i.test(text);
   return wordCount <= 2 && !hasCommunicationIntent;
 }
 
@@ -384,7 +408,7 @@ export function AIStudio() {
         <div>
           <p className="eyebrow">EX AI Studio</p>
           <h1 className="ai-title">AI Assistant</h1>
-          <p className="ai-subtitle">Viết nội dung nội bộ theo văn phong Senior Content/Marketing, chỉn chu, có chiều sâu và tham chiếu Team Voice.</p>
+          <p className="ai-subtitle">Viết nội dung nội bộ và tạo Visual Brief/Design Prompt theo văn phong Senior Content/Marketing, chỉn chu, có chiều sâu và tham chiếu Team Voice.</p>
         </div>
 
         <div className="ai-section-label">Hành động nhanh</div>
@@ -408,7 +432,7 @@ export function AIStudio() {
             <p className="ai-chat-kicker">Copy-ready output</p>
             <h2>IC Content Assistant</h2>
           </div>
-          <div className="ai-chat-note">Senior IC style · Đọc {styleReferences.filter(ref => ref.isActive).length} bài mẫu</div>
+          <div className="ai-chat-note">Senior IC style · Visual Brief ready · Đọc {styleReferences.filter(ref => ref.isActive).length} bài mẫu</div>
         </div>
 
         <div className="ai-messages hide-scrollbar">
@@ -416,9 +440,9 @@ export function AIStudio() {
             <div className="ai-empty-state">
               <div className="ai-empty-mark">AI</div>
               <h3>Bạn muốn viết nội dung gì?</h3>
-              <p>Chọn hành động nhanh hoặc nhập yêu cầu. AI sẽ viết theo văn phong văn phòng, mạch lạc, có bối cảnh và CTA rõ.</p>
+              <p>Chọn hành động nhanh hoặc nhập yêu cầu. AI có thể viết copy-ready content hoặc tạo visual brief/prompt thiết kế để chuyển sang Canva, Figma hoặc image tool.</p>
               <div className="ai-suggestion-grid">
-                {['Viết GTalk nhắc nhân viên hoàn thành khảo sát EES', 'Soạn email thông báo Town Hall tháng 7', 'Tạo poster launch chiến dịch nội bộ'].map((ex) => (
+                {['Viết GTalk nhắc nhân viên hoàn thành khảo sát EES', 'Soạn email thông báo Town Hall tháng 7', 'Tạo Visual Brief cho banner GTalk launch chiến dịch nội bộ'].map((ex) => (
                   <button key={ex} onClick={() => handleSend(ex)}>{ex}</button>
                 ))}
               </div>
@@ -502,7 +526,7 @@ export function AIStudio() {
             value={inputValue}
             onChange={e => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ví dụ: Viết GTalk nhắc nhân viên hoàn thành khảo sát EES trước thứ Sáu..."
+            placeholder="Ví dụ: Tạo Visual Brief cho banner GTalk nhắc nhân viên hoàn thành khảo sát EES trước thứ Sáu..."
             rows={1}
           />
           <div className="ai-composer-footer">
