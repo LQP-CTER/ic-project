@@ -50,24 +50,14 @@ function formatDate(d: string) {
   return `${dt.getDate()}/${dt.getMonth() + 1}`;
 }
 
-function DraggableCard({ activity, onOpen, onStatusChange, getProjectName, showProject }: {
+function DraggableCard({ activity, onOpen, getProjectName, showProject }: {
   activity: Activity;
   onOpen: (a: Activity) => void;
-  onStatusChange: (activity: Activity, status: Status) => void;
   getProjectName: (id: string) => string;
   showProject?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: activity.id });
   const computed = getDeadlineIndicator(activity);
-  const statusIndex = STATUSES.indexOf(activity.status);
-  const previousStatus = statusIndex > 0 ? STATUSES[statusIndex - 1] : null;
-  const nextStatus = statusIndex >= 0 && statusIndex < STATUSES.length - 1 ? STATUSES[statusIndex + 1] : null;
-
-  const changeStatus = (event: React.MouseEvent, status: Status) => {
-    event.stopPropagation();
-    onStatusChange(activity, status);
-  };
-
   return (
     <div
       ref={setNodeRef}
@@ -114,14 +104,6 @@ function DraggableCard({ activity, onOpen, onStatusChange, getProjectName, showP
             {formatDate(activity.deadline)}
           </span>
         )}
-      </div>
-      <div className="activity-card-pipeline-actions">
-        <button type="button" disabled={!previousStatus} onClick={event => previousStatus && changeStatus(event, previousStatus)}>
-          Lùi
-        </button>
-        <button type="button" disabled={!nextStatus} onClick={event => nextStatus && changeStatus(event, nextStatus)}>
-          Tiếp
-        </button>
       </div>
     </div>
   );
@@ -395,7 +377,7 @@ export function Activities() {
               return (
                 <DroppableColumn key={status} status={status} count={colActs.length}>
                   {colActs.map(act => (
-                    <DraggableCard key={act.id} activity={act} onOpen={a => { setSelectedActivity(a); setModalMode('detail'); }} onStatusChange={handleChangeActivityStatus} getProjectName={getProjectName} showProject={selectedProjectId === null} />
+                    <DraggableCard key={act.id} activity={act} onOpen={a => { setSelectedActivity(a); setModalMode('detail'); }} getProjectName={getProjectName} showProject={selectedProjectId === null} />
                   ))}
                   {colActs.length === 0 && (
                     <div className="p-6 text-center text-xs text-text-tertiary border-2 border-dashed border-border rounded-lg">
@@ -452,7 +434,7 @@ export function Activities() {
       </Modal>
 
       <Modal isOpen={modalMode === 'detail' && !!selectedActivity} onClose={() => { setModalMode('none'); setSelectedActivity(null); }} title="Chi tiết hoạt động">
-        {selectedActivity && <ActivityDetail activity={selectedActivity} onEdit={() => setModalMode('edit')} onDelete={() => handleDeleteActivity(selectedActivity.id)} onStatusChange={status => handleChangeActivityStatus(selectedActivity, status)} onClose={() => { setModalMode('none'); setSelectedActivity(null); }} />}
+        {selectedActivity && <ActivityDetail activity={selectedActivity} onEdit={() => setModalMode('edit')} onDelete={() => handleDeleteActivity(selectedActivity.id)} onClose={() => { setModalMode('none'); setSelectedActivity(null); }} />}
       </Modal>
 
       <Modal isOpen={modalMode === 'edit' && !!selectedActivity} onClose={() => setModalMode('detail')} title="Chỉnh sửa hoạt động">
