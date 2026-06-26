@@ -480,7 +480,7 @@ export function AIStudio() {
 
         <div className="ai-section-label">Hành động nhanh</div>
         <div className="ai-action-list">
-          {QUICK_ACTIONS.filter(action => action.id !== 'visualBrief').map(action => (
+          {QUICK_ACTIONS.map(action => (
             <button key={action.id} onClick={() => handleQuickAction(action)} className={`ai-action ${selectedTool === action.id ? 'ai-action-active' : ''}`}>
               <span>{action.title}</span>
               <small>{action.description}</small>
