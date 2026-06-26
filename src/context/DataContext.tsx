@@ -37,6 +37,7 @@ interface DataContextType {
   updateProject: (id: string, p: Partial<Project>) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
   addActivity: (a: Omit<Activity, 'id'>) => Promise<string>;
+  addActivities: (activities: Omit<Activity, 'id'>[]) => Promise<string[]>;
   updateActivity: (id: string, a: Partial<Activity>) => Promise<void>;
   deleteActivity: (id: string) => Promise<void>;
   addContent: (c: Omit<Content, 'id'>) => Promise<string>;
@@ -216,6 +217,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }
     }
     return id;
+  }, []);
+
+  const addActivities = useCallback(async (activities: Omit<Activity, 'id'>[]) => {
+    const newActivities = activities.map(a => ({ ...a, id: 'a_' + Math.random().toString(36).substr(2, 9) }));
+    setActivities(prev => [...prev, ...newActivities]);
+    if (useApi) {
+      // Fire and forget sequentially to avoid Google Apps Script concurrency issues
+      (async () => {
+        for (const newActivity of newActivities) {
+          try {
+            await sheetsApi.add(SHEETS.ACTIVITIES, newActivity);
+          } catch {
+            setActivities(prev => prev.filter(a => a.id !== newActivity.id));
+            toast.error('Không thể lưu hoạt động: ' + newActivity.name);
+          }
+        }
+      })();
+    }
+    return newActivities.map(a => a.id);
   }, []);
 
   const updateActivity = useCallback(async (id: string, updates: Partial<Activity>) => {
@@ -438,7 +458,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     <DataContext.Provider value={{
       projects, activities, contents, users, workflowTemplates, styleReferences, loading,
       addProject, updateProject, deleteProject,
-      addActivity, updateActivity, deleteActivity,
+      addActivity, addActivities, updateActivity, deleteActivity,
       addContent, updateContent, deleteContent,
       addUser, updateUser, deleteUser,
       addWorkflowTemplate, updateWorkflowTemplate, deleteWorkflowTemplate,

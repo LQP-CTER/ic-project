@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { CATEGORY_COLORS, type WorkflowStep, type WorkflowTemplate } from '../data/workflowTemplates';
 import { useData } from '../context/DataContext';
 import { Modal } from '../components/ui/Modal';
@@ -236,7 +236,7 @@ function CreateProjectForm({ template, onSuccess, onCancel }: {
   onSuccess: (name: string) => void;
   onCancel: () => void;
 }) {
-  const { addProject, addActivity } = useData();
+  const { addProject, addActivities } = useData();
   const [form, setForm] = useState({
     name: template.name,
     assignee: '',
@@ -274,19 +274,19 @@ function CreateProjectForm({ template, onSuccess, onCancel }: {
     });
 
     const start = new Date(form.startDate || new Date());
-    for (const step of template.steps) {
+    const newActivities = template.steps.map((step, index) => {
       const stepStart = new Date(start);
       stepStart.setDate(stepStart.getDate() + step.daysFromStart);
       const stepDeadline = new Date(stepStart);
       stepDeadline.setDate(stepDeadline.getDate() + step.durationDays);
 
-      await addActivity({
+      return {
         projectId,
         name: step.name,
         description: step.description,
         assignee: form.assignee,
         priority: step.priority,
-        status: 'Chưa bắt đầu',
+        status: 'Chưa bắt đầu' as const,
         startDate: stepStart.toISOString().split('T')[0],
         deadline: stepDeadline.toISOString().split('T')[0],
         channel: step.channel,
@@ -296,11 +296,15 @@ function CreateProjectForm({ template, onSuccess, onCancel }: {
         reviewDueDate: '',
         reviewNotes: '',
         checklist: JSON.stringify([
-          { id: `copy_${Date.now()}`, title: 'Chuẩn bị nội dung', done: false },
-          { id: `review_${Date.now()}`, title: 'Gửi review', done: false },
-          { id: `publish_${Date.now()}`, title: 'Hoàn tất / đăng tải', done: false },
+          { id: `copy_${Date.now()}_${index}`, title: 'Chuẩn bị nội dung', done: false },
+          { id: `review_${Date.now()}_${index}`, title: 'Gửi review', done: false },
+          { id: `publish_${Date.now()}_${index}`, title: 'Hoàn tất / đăng tải', done: false },
         ]),
-      });
+      };
+    });
+
+    if (newActivities.length > 0) {
+      await addActivities(newActivities);
     }
 
     setIsSubmitting(false);
