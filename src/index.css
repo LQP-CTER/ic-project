@@ -2660,3 +2660,52 @@ body {
     max-height: none;
   }
 }
+/* AI memory and visual brief entry */
+.ai-visual-brief-card {
+  width: 100%;
+  display: grid;
+  gap: 7px;
+  padding: 16px;
+  border-radius: 20px;
+  border: 1px solid #fed7aa;
+  background:
+    radial-gradient(circle at top right, rgba(20,184,166,.16), transparent 48%),
+    linear-gradient(145deg, #fff7ed, #ffffff 66%);
+  color: var(--ink);
+  text-align: left;
+  box-shadow: 0 14px 34px rgba(234,88,12,.12);
+  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+
+.ai-visual-brief-card:hover {
+  transform: translateY(-1px);
+  border-color: #fb923c;
+  box-shadow: 0 18px 42px rgba(234,88,12,.18);
+}
+
+.ai-visual-brief-card span {
+  width: fit-content;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #111827;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.ai-visual-brief-card strong {
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.25;
+  font-weight: 950;
+  letter-spacing: -.03em;
+}
+
+.ai-visual-brief-card small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+  font-weight: 650;
+}

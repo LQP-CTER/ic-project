@@ -19,6 +19,10 @@ interface QuickAction {
   prompt: string;
 }
 
+const AI_MESSAGES_STORAGE_KEY = 'ic-ai-studio-messages-v1';
+const MEMORY_WINDOW_SIZE = 12;
+const MAX_PERSISTED_MESSAGES = 40;
+
 const QUICK_ACTIONS: QuickAction[] = [
   { id: 'gtalk', title: 'Viết GTalk', description: 'Bài truyền thông chỉn chu, văn phòng', prompt: 'Viết bài GTalk truyền thông nội bộ theo văn phong chuyên nghiệp cho ' },
   { id: 'email', title: 'Soạn Email', description: 'Email văn phòng, mạch lạc, có chiều sâu', prompt: 'Soạn email truyền thông nội bộ theo văn phong chuyên nghiệp về ' },
@@ -177,7 +181,7 @@ function isLowSignalPrompt(text: string) {
   return wordCount <= 2 && !hasCommunicationIntent;
 }
 
-const LOW_SIGNAL_REPLY = 'Chào bạn. Bạn muốn mình hỗ trợ viết nội dung gì cho truyền thông nội bộ? Ví dụ: GTalk reminder, email thông báo, poster copy hoặc kế hoạch truyền thông.';
+const LOW_SIGNAL_REPLY = 'Chào bạn. Bạn muốn mình hỗ trợ viết nội dung gì cho truyền thông nội bộ? Ví dụ: GTalk reminder, email thông báo, poster copy, Visual Brief hoặc kế hoạch truyền thông.';
 function scoreStyleReference(reference: StyleReference, text: string, intent: string) {
   const haystack = `${reference.title} ${reference.channel} ${reference.purpose} ${reference.tone}`.toLowerCase();
   const lowerText = text.toLowerCase();
@@ -209,6 +213,48 @@ function buildStyleContext(styleReferences: StyleReference[], text: string, inte
 
   return `\n\nTeam Voice references:\n${examples}\n\nCách dùng bài mẫu:\n- Học giọng văn, cách mở đầu, cách CTA, cách xưng hô Anh/Chị/Anh/Chị/Em và độ dài tương tự.\n- Không sao chép nguyên văn câu chữ từ bài mẫu.\n- Không dùng lại thông tin riêng của bài mẫu nếu người dùng không cung cấp trong yêu cầu hiện tại.\n- Nếu bài mẫu có emoji nhưng yêu cầu hiện tại không yêu cầu emoji, vẫn không dùng emoji.`;
 }
+function readSavedMessages(): Message[] {
+  try {
+    const raw = localStorage.getItem(AI_MESSAGES_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as Array<Omit<Message, 'timestamp'> & { timestamp?: string }>;
+    return parsed
+      .filter(item => item && (item.role === 'user' || item.role === 'assistant') && typeof item.content === 'string')
+      .slice(-MAX_PERSISTED_MESSAGES)
+      .map(item => ({ ...item, timestamp: item.timestamp ? new Date(item.timestamp) : new Date() }));
+  } catch {
+    return [];
+  }
+}
+
+function compactText(text: string, maxLength = 720) {
+  const normalized = text.replace(/\s+/g, ' ').trim();
+  return normalized.length > maxLength ? `${normalized.slice(0, maxLength).trim()}...` : normalized;
+}
+
+function buildConversationMemory(history: Message[]) {
+  if (history.length === 0) return '';
+  const earlierUserNotes = history
+    .slice(0, -MEMORY_WINDOW_SIZE)
+    .filter(message => message.role === 'user')
+    .slice(-8)
+    .map((message, index) => `${index + 1}. ${compactText(message.content, 360)}`);
+
+  const recentTurns = history
+    .slice(-MEMORY_WINDOW_SIZE)
+    .map(message => `${message.role === 'user' ? 'User' : 'Assistant'}: ${compactText(message.content, 520)}`);
+
+  return `Conversation memory:
+- Luôn duy trì các yêu cầu, ràng buộc và thông tin người dùng đã nêu trong cuộc trò chuyện hiện tại.
+- Nếu yêu cầu mới dùng các từ như "tiếp", "như trên", "cái đó", "brief này", "bản trước", hãy suy luận dựa trên memory bên dưới.
+- Không nhắc lại memory trong câu trả lời nếu không cần.
+${earlierUserNotes.length > 0 ? `
+Các yêu cầu/ngữ cảnh cũ cần nhớ:
+${earlierUserNotes.join('\n')}` : ''}
+
+Các lượt gần đây:
+${recentTurns.join('\n')}`;
+}
 function cleanupAiOutput(text: string) {
   return text
     .replace(/```[\s\S]*?```/g, block => block.replace(/```/g, '').trim())
@@ -224,7 +270,7 @@ function cleanupAiOutput(text: string) {
 export function AIStudio() {
   const { projects, activities, styleReferences, addProject, addContent } = useData();
 
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(() => readSavedMessages());
   const [inputValue, setInputValue] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -247,6 +293,15 @@ export function AIStudio() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages, isGenerating]);
+
+  useEffect(() => {
+    try {
+      const trimmed = messages.slice(-MAX_PERSISTED_MESSAGES);
+      localStorage.setItem(AI_MESSAGES_STORAGE_KEY, JSON.stringify(trimmed));
+    } catch {
+      // Ignore storage quota/privacy mode issues; AI still works with in-memory context.
+    }
+  }, [messages]);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -303,11 +358,13 @@ export function AIStudio() {
 
     const ctx = buildContext();
     const styleCtx = buildStyleContext(styleReferences, text, intent);
+    const conversationMemory = buildConversationMemory([...messages, userMsg]);
     const fullPrompt = `${text}${ctx}${styleCtx}\n\n${guide.instruction}`;
 
     const chatMessages = [
       { role: 'system' as const, content: SYSTEM_PROMPT },
-      ...messages.slice(-4).map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+      ...(conversationMemory ? [{ role: 'system' as const, content: conversationMemory }] : []),
+      ...messages.slice(-MEMORY_WINDOW_SIZE).map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
       { role: 'user' as const, content: fullPrompt },
     ];
 
@@ -369,7 +426,11 @@ export function AIStudio() {
     }
   };
 
-  const handleReset = () => { setMessages([]); setInputValue(''); };
+  const handleReset = () => {
+    setMessages([]);
+    setInputValue('');
+    localStorage.removeItem(AI_MESSAGES_STORAGE_KEY);
+  };
   const handleQuickProjectChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setQuickProject(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
@@ -411,6 +472,12 @@ export function AIStudio() {
           <p className="ai-subtitle">Viết nội dung nội bộ và tạo Visual Brief/Design Prompt theo văn phong Senior Content/Marketing, chỉn chu, có chiều sâu và tham chiếu Team Voice.</p>
         </div>
 
+        <button type="button" className="ai-visual-brief-card" onClick={() => handleQuickAction(QUICK_ACTIONS.find(action => action.id === 'visualBrief')!)}>
+          <span>Visual Brief Studio</span>
+          <strong>Open Design-lite cho banner, poster, key visual.</strong>
+          <small>Tạo layout, copy trên visual, art direction, prompt Canva/Figma/image tool.</small>
+        </button>
+
         <div className="ai-section-label">Hành động nhanh</div>
         <div className="ai-action-list">
           {QUICK_ACTIONS.map(action => (
@@ -432,7 +499,7 @@ export function AIStudio() {
             <p className="ai-chat-kicker">Copy-ready output</p>
             <h2>IC Content Assistant</h2>
           </div>
-          <div className="ai-chat-note">Senior IC style · Visual Brief ready · Đọc {styleReferences.filter(ref => ref.isActive).length} bài mẫu</div>
+          <div className="ai-chat-note">Memory on · Visual Brief ready · Đọc {styleReferences.filter(ref => ref.isActive).length} bài mẫu</div>
         </div>
 
         <div className="ai-messages hide-scrollbar">
