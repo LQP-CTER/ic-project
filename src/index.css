@@ -2907,12 +2907,28 @@ body {
   position: relative;
 }
 
-.ai-action:nth-child(3) {
+.ai-action-pipeline,
+.ai-action-visualBrief {
   border-color: #fed7aa;
   background: linear-gradient(135deg, #fff7ed, #ffffff 72%);
 }
 
-.ai-action:nth-child(3) span::after {
+.ai-action-pipeline span::after {
+  content: 'Flow';
+  display: inline-flex;
+  margin-left: 7px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #111827;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 950;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  vertical-align: 2px;
+}
+
+.ai-action-visualBrief span::after {
   content: 'Studio';
   display: inline-flex;
   margin-left: 7px;

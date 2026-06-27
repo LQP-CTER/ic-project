@@ -52,6 +52,7 @@ Phong cách mặc định:
 Quy tắc theo loại nội dung:
 - Nếu tạo GTalk/Slack/Teams: ưu tiên 1 bản chính hoàn chỉnh, văn phòng và có thể gửi ngay. Nếu phù hợp, thêm 1 phiên bản thay thế ngắn hơn. Không đưa 3 phiên bản rời rạc mặc định.
 - Nếu tạo email: gồm Subject và Body. Body có lời chào, bối cảnh, nội dung chính, hành động cần làm, deadline nếu có, câu cảm ơn/kết phù hợp.
+- Nếu tạo Marketing Pipeline: làm theo logic pipeline content marketing gồm context/research brief, strategic angle, channel copy, visual brief, review checklist và next actions. Tư duy như một pipeline vận hành nội dung, không chỉ viết một bài rời rạc.
 - Nếu tạo Visual Brief: đóng vai Senior IC Strategist kiêm Creative Director. Trả về brief thiết kế dùng được cho designer/Canva/Figma/image model, gồm mục tiêu visual, audience, key message, layout, hierarchy chữ, copy trên visual, màu sắc, mood, prompt tạo ảnh, negative prompt và checklist review.
 - Nếu tạo poster: gồm Concept, Headline, Subline, Body copy, CTA; copy phải sắc nhưng vẫn đúng văn hóa nội bộ.
 - Nếu tạo kế hoạch: có mục tiêu, insight/ngữ cảnh, thông điệp chính, kênh, timeline và checklist triển khai.
@@ -62,6 +63,25 @@ Quy tắc theo loại nội dung:
 Định dạng ưu tiên: nội dung copy-ready, có tiêu đề rõ khi cần, trình bày bằng đoạn văn và bullet ngắn vừa đủ. Không trang trí quá mức.`;
 
 const INTENT_GUIDES: Record<string, { instruction: string; maxTokens: number; temperature: number }> = {
+  pipeline: {
+    maxTokens: 1900,
+    temperature: 0.54,
+    instruction: `
+Yêu cầu định dạng cho Marketing Content Pipeline:
+- Trả về một pipeline triển khai nội dung hoàn chỉnh cho team IC/EX, lấy cảm hứng từ workflow research → write → asset → review → publish.
+- Không tạo ảnh thật, không gọi công cụ ngoài. Chỉ tạo output có thể dùng để triển khai.
+- Cấu trúc bắt buộc:
+  1. Campaign snapshot: mục tiêu, audience, insight/ngữ cảnh, thông điệp chính, CTA, thông tin còn thiếu.
+  2. Content angles: 3 góc tiếp cận khác nhau, mỗi góc có mục tiêu, cảm xúc chính và thời điểm dùng.
+  3. Recommended pipeline: các bước từ brief, draft, review, visual, publish, recap; mỗi bước có output, owner placeholder và trạng thái gợi ý.
+  4. Primary copy: một bản GTalk/email/post chính có thể dùng ngay theo tone văn phòng.
+  5. Supporting assets: headline ngắn, subline, CTA, micro-copy cho banner/poster.
+  6. Visual brief: layout, art direction và prompt thiết kế ngắn để chuyển sang Canva/Figma/image tool.
+  7. Review checklist: các tiêu chí duyệt nội dung trước khi gửi.
+  8. Next actions: 5 việc cụ thể nên tạo trong module Hoạt động.
+- Nếu thiếu dữ liệu, dùng placeholder [deadline], [link], [owner], [người duyệt], [brand color].
+- Không dùng bảng markdown, không code block, không emoji mặc định.`,
+  },
   visualBrief: {
     maxTokens: 1700,
     temperature: 0.58,
@@ -162,6 +182,7 @@ Yêu cầu định dạng chung:
 function detectIntent(text: string, selectedTool: string | null): keyof typeof INTENT_GUIDES {
   if (selectedTool && selectedTool in INTENT_GUIDES) return selectedTool as keyof typeof INTENT_GUIDES;
   const lower = text.toLowerCase();
+  if (lower.includes('pipeline') || lower.includes('content pipeline') || lower.includes('marketing pipeline') || lower.includes('campaign pipeline') || lower.includes('quy trình nội dung')) return 'pipeline';
   if (lower.includes('gtalk') || lower.includes('slack') || lower.includes('teams') || lower.includes('tin nhắn')) return 'gtalk';
   if (lower.includes('email') || lower.includes('mail')) return 'email';
   if (lower.includes('visual brief') || lower.includes('design prompt') || lower.includes('key visual') || lower.includes('creative direction') || lower.includes('art direction') || lower.includes('thiết kế') || lower.includes('hình ảnh')) return 'visualBrief';
@@ -177,7 +198,7 @@ function isLowSignalPrompt(text: string) {
   const greetings = new Set(['hi', 'hello', 'hey', 'chào', 'xin chào', 'alo', 'hola']);
   if (greetings.has(normalized)) return true;
   const wordCount = normalized.split(/\s+/).filter(Boolean).length;
-  const hasCommunicationIntent = /(viết|soạn|tạo|lập|sửa|rewrite|email|gtalk|slack|teams|poster|banner|visual|brief|design|thiết kế|hình ảnh|key visual|kế hoạch|plan|khảo sát|survey|town hall|thông báo|nhắc|reminder)/i.test(text);
+  const hasCommunicationIntent = /(viết|soạn|tạo|lập|sửa|rewrite|pipeline|campaign|email|gtalk|slack|teams|poster|banner|visual|brief|design|thiết kế|hình ảnh|key visual|kế hoạch|plan|khảo sát|survey|town hall|thông báo|nhắc|reminder)/i.test(text);
   return wordCount <= 2 && !hasCommunicationIntent;
 }
 
@@ -481,7 +502,7 @@ export function AIStudio() {
         <div className="ai-section-label">Hành động nhanh</div>
         <div className="ai-action-list">
           {QUICK_ACTIONS.map(action => (
-            <button key={action.id} onClick={() => handleQuickAction(action)} className={`ai-action ${selectedTool === action.id ? 'ai-action-active' : ''}`}>
+            <button key={action.id} onClick={() => handleQuickAction(action)} className={`ai-action ai-action-${action.id} ${selectedTool === action.id ? 'ai-action-active' : ''}`}>
               <span>{action.title}</span>
               <small>{action.description}</small>
             </button>
@@ -509,7 +530,7 @@ export function AIStudio() {
               <h3>Bạn muốn viết nội dung gì?</h3>
               <p>Chọn hành động nhanh hoặc nhập yêu cầu. AI có thể viết copy-ready content hoặc tạo visual brief/prompt thiết kế để chuyển sang Canva, Figma hoặc image tool.</p>
               <div className="ai-suggestion-grid">
-                {['Viết GTalk nhắc khảo sát EES', 'Soạn email Town Hall tháng 7', 'Tạo Visual Brief cho banner GTalk'].map((ex) => (
+                {['Tạo pipeline cho chiến dịch EES', 'Viết GTalk nhắc khảo sát EES', 'Tạo Visual Brief cho banner GTalk'].map((ex) => (
                   <button key={ex} onClick={() => handleSend(ex)}>{ex}</button>
                 ))}
               </div>
