@@ -1,4 +1,4 @@
-﻿import type { CSSProperties } from 'react';
+import type { CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -38,7 +38,7 @@ function focusToneClass(tone: FocusItem['tone']) {
 
 export function Dashboard() {
   const navigate = useNavigate();
-  const { activities, projects, contents } = useData();
+  const { activities, projects, contents, loading } = useData();
 
   const total = activities.length;
   const completed = activities.filter(isDone).length;
@@ -151,6 +151,20 @@ export function Dashboard() {
   });
 
   const activeActivities = activities.filter(a => a.status === 'Đang thực hiện').slice(0, 6);
+
+  if (loading) {
+    return (
+      <div className="page-shell">
+        <div className="dashboard-loading-state panel-card">
+          <div className="dashboard-loading-spinner" />
+          <div>
+            <h2>Đang tải dữ liệu Dashboard</h2>
+            <p>Đang đồng bộ Projects, Activities và Content từ Google Sheets...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page-shell">

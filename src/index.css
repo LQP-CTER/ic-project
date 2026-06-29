@@ -2946,3 +2946,40 @@ body {
 .ai-visual-brief-card {
   display: none;
 }
+/* Dashboard data loading */
+.dashboard-loading-state {
+  min-height: 360px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  text-align: left;
+}
+
+.dashboard-loading-spinner {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 3px solid #fed7aa;
+  border-top-color: #ea580c;
+  animation: spin .8s linear infinite;
+  flex: 0 0 auto;
+}
+
+.dashboard-loading-state h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 20px;
+  font-weight: 950;
+  letter-spacing: -.035em;
+}
+
+.dashboard-loading-state p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

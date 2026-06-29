@@ -69,6 +69,145 @@ function normalizeEmail(value: string) {
   return value.toLowerCase().trim();
 }
 
+
+const VALID_STATUSES = ['Chưa bắt đầu', 'Đang thực hiện', 'Chờ duyệt', 'Hoàn thành', 'Tạm dừng', 'Kết thúc'] as const;
+const VALID_PRIORITIES = ['High', 'Medium', 'Low'] as const;
+
+function cleanString(value: unknown) {
+  return String(value ?? '').trim();
+}
+
+function normalizeDateString(value: unknown) {
+  const raw = cleanString(value);
+  if (!raw) return '';
+  const parsed = new Date(raw);
+  if (!Number.isNaN(parsed.getTime()) && /^\d{4}-\d{2}-\d{2}/.test(raw)) {
+    return parsed.toISOString().split('T')[0];
+  }
+  return raw;
+}
+
+function normalizeStatus(value: unknown, fallback: Project['status'] = 'Chưa bắt đầu'): Project['status'] {
+  const raw = cleanString(value);
+  const compact = raw.toLowerCase().replace(/\s+/g, ' ');
+  const aliases: Record<string, Project['status']> = {
+    'todo': 'Chưa bắt đầu',
+    'to do': 'Chưa bắt đầu',
+    'backlog': 'Chưa bắt đầu',
+    'chua bat dau': 'Chưa bắt đầu',
+    'chưa bắt đầu': 'Chưa bắt đầu',
+    'in progress': 'Đang thực hiện',
+    'doing': 'Đang thực hiện',
+    'dang thuc hien': 'Đang thực hiện',
+    'đang thực hiện': 'Đang thực hiện',
+    'review': 'Chờ duyệt',
+    'in review': 'Chờ duyệt',
+    'cho duyet': 'Chờ duyệt',
+    'chờ duyệt': 'Chờ duyệt',
+    'done': 'Hoàn thành',
+    'completed': 'Hoàn thành',
+    'complete': 'Hoàn thành',
+    'hoan thanh': 'Hoàn thành',
+    'hoàn thành': 'Hoàn thành',
+    'paused': 'Tạm dừng',
+    'tam dung': 'Tạm dừng',
+    'tạm dừng': 'Tạm dừng',
+    'closed': 'Kết thúc',
+    'ended': 'Kết thúc',
+    'ket thuc': 'Kết thúc',
+    'kết thúc': 'Kết thúc',
+  };
+  const direct = VALID_STATUSES.find(status => status === raw);
+  return direct || aliases[compact] || fallback;
+}
+
+function normalizePriority(value: unknown): Activity['priority'] {
+  const raw = cleanString(value);
+  const direct = VALID_PRIORITIES.find(priority => priority === raw);
+  if (direct) return direct;
+  const lower = raw.toLowerCase();
+  if (lower.includes('high') || lower.includes('cao')) return 'High';
+  if (lower.includes('low') || lower.includes('thấp') || lower.includes('thap')) return 'Low';
+  return 'Medium';
+}
+
+function hasAnyValue(raw: Record<string, unknown>, fields: string[]) {
+  return fields.some(field => cleanString(raw[field]));
+}
+
+function normalizeProject(rawProject: Partial<Project>): Project | null {
+  const raw = rawProject as Record<string, unknown>;
+  if (!hasAnyValue(raw, ['id', 'name', 'description', 'assignee', 'deadline', 'status'])) return null;
+  return {
+    id: cleanString(rawProject.id) || `p_${Math.random().toString(36).slice(2, 9)}`,
+    name: cleanString(rawProject.name) || 'Dự án chưa đặt tên',
+    description: cleanString(rawProject.description),
+    assignee: cleanString(rawProject.assignee),
+    startDate: normalizeDateString(rawProject.startDate),
+    deadline: normalizeDateString(rawProject.deadline),
+    status: normalizeStatus(rawProject.status),
+    notes: cleanString(rawProject.notes),
+    objective: cleanString(rawProject.objective),
+    audience: cleanString(rawProject.audience),
+    keyMessage: cleanString(rawProject.keyMessage),
+    cta: cleanString(rawProject.cta),
+    channels: cleanString(rawProject.channels),
+    toneOfVoice: cleanString(rawProject.toneOfVoice),
+    stakeholder: cleanString(rawProject.stakeholder),
+    successMetric: cleanString(rawProject.successMetric),
+    mandatoryInfo: cleanString(rawProject.mandatoryInfo),
+  };
+}
+
+function normalizeActivity(rawActivity: Partial<Activity>): Activity | null {
+  const raw = rawActivity as Record<string, unknown>;
+  if (!hasAnyValue(raw, ['id', 'projectId', 'name', 'assignee', 'deadline', 'status'])) return null;
+  return {
+    id: cleanString(rawActivity.id) || `a_${Math.random().toString(36).slice(2, 9)}`,
+    projectId: cleanString(rawActivity.projectId),
+    name: cleanString(rawActivity.name) || 'Hoạt động chưa đặt tên',
+    description: cleanString(rawActivity.description),
+    assignee: cleanString(rawActivity.assignee),
+    startDate: normalizeDateString(rawActivity.startDate),
+    deadline: normalizeDateString(rawActivity.deadline),
+    priority: normalizePriority(rawActivity.priority),
+    status: normalizeStatus(rawActivity.status),
+    channel: cleanString(rawActivity.channel),
+    attachmentLink: cleanString(rawActivity.attachmentLink),
+    notes: cleanString(rawActivity.notes),
+    approver: cleanString(rawActivity.approver),
+    reviewDueDate: normalizeDateString(rawActivity.reviewDueDate),
+    reviewNotes: cleanString(rawActivity.reviewNotes),
+    checklist: cleanString(rawActivity.checklist),
+  };
+}
+
+function normalizeContent(rawContent: Partial<Content>): Content | null {
+  const raw = rawContent as Record<string, unknown>;
+  if (!hasAnyValue(raw, ['id', 'title', 'content', 'contentType', 'projectName', 'activityName'])) return null;
+  const rawStatus = cleanString(rawContent.status);
+  const allowedStatuses: NonNullable<Content['status']>[] = ['Draft', 'In review', 'Approved', 'Published', 'Archived'];
+  return {
+    id: cleanString(rawContent.id) || `c_${Math.random().toString(36).slice(2, 9)}`,
+    title: cleanString(rawContent.title) || 'Nội dung chưa đặt tên',
+    contentType: cleanString(rawContent.contentType) || 'Khác',
+    projectId: cleanString(rawContent.projectId),
+    projectName: cleanString(rawContent.projectName),
+    activityId: cleanString(rawContent.activityId),
+    activityName: cleanString(rawContent.activityName),
+    prompt: cleanString(rawContent.prompt),
+    content: cleanString(rawContent.content),
+    createdAt: cleanString(rawContent.createdAt) || new Date().toISOString(),
+    status: allowedStatuses.includes(rawStatus as NonNullable<Content['status']>) ? rawStatus as Content['status'] : 'Draft',
+    approver: cleanString(rawContent.approver),
+    reviewNotes: cleanString(rawContent.reviewNotes),
+    publishedAt: normalizeDateString(rawContent.publishedAt),
+  };
+}
+
+function normalizeArray<TInput, TOutput>(items: TInput[] | undefined, normalizer: (item: TInput) => TOutput | null): TOutput[] {
+  return Array.isArray(items) ? items.map(normalizer).filter((item): item is TOutput => Boolean(item)) : [];
+}
 function normalizeUser(rawUser: Partial<UserRecord>): UserRecord {
   const email = normalizeEmail(String(rawUser.email || ''));
   return {
@@ -135,9 +274,9 @@ function serializeStyleReference(reference: StyleReference | Partial<StyleRefere
   };
 }
 export function DataProvider({ children }: { children: ReactNode }) {
-  const [projects, setProjects] = useState<Project[]>(initialProjects);
-  const [activities, setActivities] = useState<Activity[]>(initialActivities);
-  const [contents, setContents] = useState<Content[]>(initialContents);
+  const [projects, setProjects] = useState<Project[]>(useApi ? [] : initialProjects);
+  const [activities, setActivities] = useState<Activity[]>(useApi ? [] : initialActivities);
+  const [contents, setContents] = useState<Content[]>(useApi ? [] : initialContents);
   const [users, setUsers] = useState<UserRecord[]>(initialUsers);
   const [workflowTemplates, setWorkflowTemplates] = useState<WorkflowTemplate[]>(WORKFLOW_TEMPLATES);
   const [styleReferences, setStyleReferences] = useState<StyleReference[]>(initialStyleReferences);
@@ -147,9 +286,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (!useApi) return;
     sheetsApi.getAll()
       .then(data => {
-        if (data.projects) setProjects(data.projects);
-        if (data.activities) setActivities(data.activities);
-        if (data.contents) setContents(data.contents);
+        if (Array.isArray(data.projects)) setProjects(normalizeArray(data.projects, normalizeProject));
+        if (Array.isArray(data.activities)) setActivities(normalizeArray(data.activities, normalizeActivity));
+        if (Array.isArray(data.contents)) setContents(normalizeArray(data.contents, normalizeContent));
         if (data.users) setUsers(data.users.map(normalizeUser).filter((user: UserRecord) => user.email));
         if (Array.isArray(data.workflowTemplates) && data.workflowTemplates.length > 0) {
           setWorkflowTemplates(data.workflowTemplates.map(normalizeWorkflowTemplate));
