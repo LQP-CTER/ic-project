@@ -549,17 +549,17 @@ body {
   background: #0a0a0a;
   color: #fff;
   font-size: 10px;
-  font-weight: 950;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: .08em;
+  letter-spacing: .06em;
 }
 
 .login-version-pill strong {
-  color: rgba(10,10,10,.72);
+  color: rgba(10,10,10,.68);
   font-size: 11px;
-  font-weight: 850;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: .14em;
+  letter-spacing: .08em;
 }
 
 .login-copy {
@@ -573,8 +573,8 @@ body {
   margin: 0;
   color: #ea580c;
   font-size: 11px;
-  font-weight: 950;
-  letter-spacing: .18em;
+  font-weight: 800;
+  letter-spacing: .12em;
   text-transform: uppercase;
 }
 
@@ -582,10 +582,10 @@ body {
   max-width: 780px;
   margin: 0;
   color: #0a0a0a;
-  font-size: clamp(44px, 7.5vw, 86px);
-  line-height: .96;
-  letter-spacing: -.075em;
-  font-weight: 950;
+  font-size: clamp(42px, 6.2vw, 72px);
+  line-height: 1.04;
+  letter-spacing: -.045em;
+  font-weight: 760;
 }
 
 .login-copy p:not(.login-kicker) {
@@ -594,7 +594,7 @@ body {
   color: rgba(10,10,10,.58);
   font-size: clamp(15px, 1.5vw, 18px);
   line-height: 1.75;
-  font-weight: 450;
+  font-weight: 400;
 }
 
 .login-highlight-grid {
@@ -621,14 +621,14 @@ body {
 .login-highlight-card span {
   color: #111827;
   font-size: 13px;
-  line-height: 1.35;
-  font-weight: 850;
+  line-height: 1.45;
+  font-weight: 720;
 }
 
 .login-highlight-card small {
   color: rgba(10,10,10,.46);
   font-size: 11px;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .login-panel {
@@ -656,7 +656,7 @@ body {
   background: rgba(255,247,237,.72);
   color: #9a3412;
   font-size: 11px;
-  font-weight: 900;
+  font-weight: 760;
 }
 
 .login-form-title {
@@ -669,10 +669,10 @@ body {
 .login-form-title h2 {
   margin: 0;
   color: #0f172a;
-  font-size: clamp(38px, 5vw, 52px);
-  line-height: .96;
-  letter-spacing: -.07em;
-  font-weight: 950;
+  font-size: clamp(34px, 4.2vw, 46px);
+  line-height: 1.05;
+  letter-spacing: -.04em;
+  font-weight: 760;
 }
 
 .login-form-title p:not(.login-kicker) {
@@ -697,7 +697,7 @@ body {
 .login-field span {
   color: rgba(15,23,42,.62);
   font-size: 13px;
-  font-weight: 850;
+  font-weight: 720;
 }
 
 .login-field .form-control {
@@ -721,7 +721,7 @@ body {
   color: #fff;
   background: #0a0a0a;
   font-size: 14px;
-  font-weight: 950;
+  font-weight: 800;
   box-shadow: 0 18px 42px rgba(10,10,10,.2);
   transition: transform .18s ease, box-shadow .18s ease, opacity .18s ease, background .18s ease;
 }
@@ -804,7 +804,7 @@ body {
   .login-version-pill { margin-bottom: 22px; }
   .login-version-pill strong { letter-spacing: .06em; }
   .login-copy { margin-bottom: 24px; }
-  .login-copy h1 { font-size: clamp(39px, 13vw, 58px); }
+  .login-copy h1 { font-size: clamp(36px, 10vw, 50px); line-height: 1.07; letter-spacing: -.035em; }
   .login-highlight-grid { grid-template-columns: 1fr; }
   .login-highlight-card { min-height: auto; }
   .login-panel { padding: 22px; border-radius: 28px; }

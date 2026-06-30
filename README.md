@@ -13,13 +13,13 @@ Các nhóm chức năng chính:
 | Khu vực | Mục đích | Người dùng sẽ làm gì |
 | --- | --- | --- |
 | Dashboard | Nhìn tổng quan tiến độ | Xem tổng số hoạt động, trạng thái, deadline sắp tới/quá hạn, tiến độ theo dự án |
-| Hoạt động | Quản lý dự án và task truyền thông | Tạo/sửa/xóa dự án, tạo/sửa/xóa hoạt động, đổi trạng thái, quản lý deadline/người phụ trách |
-| AI Assistant | Tạo nội dung truyền thông | Chọn dự án/hoạt động, nhập brief, dùng Team Voice references, tạo GTalk/email/poster copy/plan/reminder, lưu vào thư viện |
+| Hoạt động | Quản lý dự án và task truyền thông | Tạo/sửa/xóa dự án, tạo/sửa/xóa hoạt động, kéo-thả task giữa các pipeline, quản lý deadline/người phụ trách/checklist |
+| AI Assistant | Tạo nội dung truyền thông và visual brief | Chọn dự án/hoạt động, dùng Team Voice + conversation memory, tạo GTalk/email/poster copy/plan/reminder/Visual Brief, lưu vào thư viện |
 | Workflow | Tạo dự án từ quy trình mẫu | Chọn template như khảo sát nhân viên, town hall, triển khai công cụ mới; app tự tạo project + task |
 | Thư viện | Quản lý nội dung đã tạo | Thêm/sửa/xóa/xem/copy nội dung, gắn nội dung với dự án hoặc hoạt động |
 | Team Voice | Quản lý bài mẫu cho AI | Lưu bài truyền thông đã duyệt để AI học style, tone, CTA và cách xưng hô |
 | Người dùng | Quản lý quyền truy cập | Admin thêm/sửa/xóa người dùng và phân quyền admin/member |
-| Google Sheets backend | Database tạm cho MVP | Lưu Projects, Activities, Contents, Users, WorkflowTemplates, StyleReferences để team có thể triển khai nhanh |
+| Google Sheets backend | Database tạm cho MVP | Lưu Projects, Activities, Contents, Users, WorkflowTemplates, StyleReferences để team triển khai nhanh; hạn chế sửa tay nếu không cần |
 
 ## 2. Ai sẽ dùng app này?
 
@@ -77,6 +77,15 @@ Một chiến dịch, chương trình hoặc initiative truyền thông.
 | deadline | Deadline tổng |
 | status | Trạng thái |
 | notes | Ghi chú |
+| objective | Mục tiêu truyền thông |
+| audience | Đối tượng nhận thông tin |
+| keyMessage | Thông điệp chính |
+| cta | Hành động mong muốn |
+| channels | Kênh triển khai dự kiến |
+| toneOfVoice | Giọng văn/tone mong muốn |
+| stakeholder | Người/nhóm liên quan hoặc người duyệt |
+| successMetric | Chỉ số đánh giá thành công |
+| mandatoryInfo | Thông tin bắt buộc phải xuất hiện |
 
 ### Activities
 
@@ -94,9 +103,12 @@ Các đầu việc cụ thể nằm trong một project.
 | priority | High / Medium / Low |
 | status | Chưa bắt đầu, Đang thực hiện, Chờ duyệt, Hoàn thành... |
 | channel | Kênh truyền thông: GTalk, Email, Offline... |
-| checklist | Checklist/subtask nhỏ trong activity, lưu dạng JSON |
 | attachmentLink | Link tài liệu/thiết kế/file liên quan |
 | notes | Ghi chú |
+| approver | Người duyệt activity/nội dung liên quan |
+| reviewDueDate | Hạn phản hồi/review |
+| reviewNotes | Ghi chú review/feedback |
+| checklist | Checklist/subtask nhỏ trong activity, lưu dạng JSON |
 
 ### Contents
 
@@ -112,6 +124,10 @@ Nội dung truyền thông được tạo bằng AI hoặc nhập thủ công.
 | prompt | Brief/prompt gốc |
 | content | Nội dung hoàn chỉnh |
 | createdAt | Thời điểm tạo |
+| status | Draft, In review, Approved, Published, Archived |
+| approver | Người duyệt nội dung |
+| reviewNotes | Ghi chú review |
+| publishedAt | Ngày publish nếu đã đăng/gửi |
 
 ### WorkflowTemplates
 
@@ -141,6 +157,7 @@ Kho bài mẫu để AI học giọng viết thực tế của team. AI Assistan
 | content | Nội dung bài mẫu đã duyệt/gửi thật |
 | isActive | Có đưa vào AI context hay không |
 | createdAt | Ngày tạo/lưu bài mẫu |
+
 ## 4. Workflow làm việc đề xuất cho team truyền thông
 
 Đây là workflow end-to-end nên dùng khi vận hành một chiến dịch truyền thông nội bộ trên IC Platform.
@@ -203,8 +220,31 @@ Cách đọc diagram:
 - `Thư viện` phù hợp khi đã có nội dung từ nguồn khác, hoặc cần lưu lại bản cuối để tái sử dụng.
 - `Dashboard` chỉ thật sự có giá trị khi team cập nhật status đều đặn.
 
-### Bước 1 — Nhận brief và xác định loại việc
+### Quy ước vận hành khuyến nghị
 
+Để app không chỉ là nơi lưu dữ liệu mà thật sự trở thành workspace làm việc, team nên thống nhất một số quy ước vận hành:
+
+| Việc cần làm | Nên thao tác ở đâu | Quy ước đề xuất |
+| --- | --- | --- |
+| Có chiến dịch/chương trình mới | `Workflow` hoặc `Hoạt động` | Nếu việc lặp lại, ưu tiên tạo từ Workflow. Nếu ad-hoc, tạo Project trực tiếp. |
+| Có đầu việc cụ thể cần theo dõi | `Hoạt động` | Mỗi activity nên có owner, deadline, status và checklist nếu có nhiều bước nhỏ. |
+| Lỡ kéo nhầm task trong pipeline | `Hoạt động` | Kéo task về đúng cột trạng thái. Không dùng click để nhảy trạng thái. |
+| Cần viết nội dung mới | `AI Assistant` | Chọn project/activity context trước khi prompt nếu nội dung thuộc một chiến dịch. |
+| Cần AI viết đúng giọng team hơn | `Team Voice` | Thêm bài mẫu đã duyệt, bật `isActive = true`, rồi quay lại AI Assistant. |
+| Cần brief thiết kế/poster/banner | `AI Assistant` → `Visual Brief` | Visual Brief chỉ tạo creative direction/prompt; chưa tạo ảnh thật trong app. |
+| Nội dung đã dùng hoặc cần lưu lại | `Thư viện` | Lưu bản cuối, gắn project/activity, cập nhật status Draft/In review/Approved/Published. |
+| Cần xem hôm nay ưu tiên gì | `Dashboard` | Xem Today focus trước, sau đó đi vào Hoạt động/Thư viện để xử lý. |
+| Cần sửa dữ liệu trực tiếp trong Sheet | Google Sheets | Chỉ nên làm khi cần khẩn cấp hoặc bulk edit; sau đó refresh app để đồng bộ. |
+
+Nhịp vận hành nên dùng:
+
+- Đầu ngày: IC lead mở Dashboard, xem `Today focus`, nhắc owner các việc quá hạn/sắp tới hạn/chờ duyệt.
+- Trong ngày: owner thao tác trong `Hoạt động`, kéo task đúng pipeline và cập nhật checklist.
+- Khi viết nội dung: dùng `AI Assistant` với project/activity context; nếu cần thiết kế thì dùng `Visual Brief` để chuyển brief cho designer/Canva/Figma/image tool.
+- Sau khi duyệt/publish: lưu bản cuối vào `Thư viện`, cập nhật content status và activity status.
+- Cuối tuần hoặc cuối campaign: đóng project/activity, archive content cũ, bổ sung bài tốt vào `Team Voice` nếu muốn AI học tiếp.
+
+### Bước 1 — Nhận brief và xác định loại việc
 Team nhận yêu cầu từ HR, Operation, Tech, Leadership hoặc stakeholder khác.
 
 Cần xác định:
@@ -263,9 +303,10 @@ Khi cần viết nội dung, user vào `AI Assistant`:
 1. chọn project liên quan;
 2. chọn activity liên quan nếu có;
 3. chọn mục tiêu nội dung hoặc nhập prompt tự do;
-4. AI trả về bản nháp ngắn gọn, thực dụng, có thể copy dùng ngay;
-5. user chỉnh lại nếu cần;
-6. lưu nội dung vào `Thư viện`.
+4. AI trả về bản nháp copy-ready theo vai trò Senior Internal Communications/Content;
+5. nếu đang trao đổi nhiều lượt, AI sẽ dùng conversation memory để hiểu các câu như “tiếp”, “như trên”, “brief này”;
+6. user chỉnh lại nếu cần;
+7. lưu nội dung vào `Thư viện`.
 
 Ví dụ prompt tốt:
 
@@ -273,7 +314,7 @@ Ví dụ prompt tốt:
 Viết GTalk reminder nhắc nhân viên hoàn thành khảo sát EES trước 17h hôm nay. Giọng văn thân thiện, ngắn gọn, không dùng emoji, có CTA rõ.
 ```
 
-AI không nên là nơi quyết định chiến lược. AI chỉ nên giúp tăng tốc sản xuất bản nháp. Người làm truyền thông vẫn cần kiểm tra:
+AI không nên là nơi quyết định chiến lược. AI chỉ nên giúp tăng tốc sản xuất bản nháp hoặc tạo Visual Brief/Design Prompt để chuyển cho designer/Canva/Figma/image tool. Hiện app chưa tạo ảnh thật trực tiếp. Người làm truyền thông vẫn cần kiểm tra:
 
 - thông tin có đúng không;
 - tone có phù hợp văn hóa công ty không;
@@ -612,6 +653,7 @@ Nếu muốn chỉnh app cho sát cách IC team làm việc hơn, thứ tự ưu
 7. Tiếp theo: deep link/filter cho Today focus.
 8. Tiếp theo: nâng permission roles admin/editor/viewer.
 9. Sau đó mới tính backend production thay Google Sheets.
+
 ## 9. Chạy local
 
 Yêu cầu Node.js 20+.
@@ -655,7 +697,11 @@ https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec?action=getAll
 
 Mỗi khi chỉnh `google-apps-script.js`, tạo version mới và chọn **Manage deployments → Edit → New version → Deploy**. URL `/exec` vẫn giữ nguyên.
 
+Sau khi pull code mới có thay đổi schema, nên chạy lại `setupSheets()` trong Apps Script. Hàm này chỉ thêm sheet/cột còn thiếu và không xóa dữ liệu cũ.
+
 ## 11. Deploy Vercel
+
+Repo đã có `vercel.json` để rewrite mọi route về `index.html`. Nhờ vậy các route như `/activities`, `/workflow`, `/ai-assistant` không bị 404 khi refresh/F5 trên Vercel.
 
 1. Đẩy source lên GitHub và import repository vào Vercel.
 2. Framework preset: **Vite**.
@@ -668,6 +714,7 @@ Mỗi khi chỉnh `google-apps-script.js`, tạo version mới và chọn **Mana
 6. Redeploy.
 7. Đăng nhập bằng email đã thêm vào sheet `Users`.
 8. Tạo thử một project, một activity, một content và kiểm tra các hàng tương ứng xuất hiện trong Google Sheets.
+9. Mở trực tiếp `/activities` hoặc `/workflow` rồi refresh/F5 để xác nhận SPA routing hoạt động đúng.
 
 ## 12. Kiểm tra nhanh khi có lỗi
 
@@ -677,6 +724,9 @@ Mỗi khi chỉnh `google-apps-script.js`, tạo version mới và chọn **Mana
 - Tạo mới nhưng sau đó không sửa/xóa được: chạy lại `setupSheets()` để bổ sung cột mới, sau đó redeploy Apps Script mới nhất.
 - AI báo không kết nối được: kiểm tra `VITE_CEREBRAS_API_KEY`, model trong `VITE_CEREBRAS_MODEL`, và restart Vite.
 - Dữ liệu lưu ở web nhưng refresh mất: app đang chạy mock mode hoặc Apps Script chưa deploy đúng version.
+- Refresh/F5 ở `/activities`, `/workflow` hoặc route con bị 404 trên Vercel: kiểm tra `vercel.json` còn tồn tại và Vercel đã redeploy commit mới nhất.
+- AI có vẻ quên ngữ cảnh: kiểm tra bạn có đang bấm `Cuộc trò chuyện mới` không; memory hiện lưu trong trình duyệt/localStorage và chỉ dùng cho cuộc trò chuyện gần đây.
+- Visual Brief không tạo ra ảnh: đây là đúng thiết kế hiện tại. Visual Brief chỉ tạo creative direction/prompt để chuyển sang Canva/Figma/image generation tool.
 
 ## 13. Lưu ý bảo mật
 

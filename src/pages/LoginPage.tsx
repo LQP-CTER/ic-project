@@ -49,10 +49,9 @@ export function LoginPage() {
 
             <div className="login-copy animate-on-load delay-300">
               <p className="login-kicker">Workspace hiện đại cho team IC</p>
-              <h1>Điều phối truyền thông nội bộ gọn hơn, nhanh hơn.</h1>
+              <h1>Workspace gọn cho truyền thông nội bộ.</h1>
               <p>
-                Một nơi để team EX quản lý dự án, pipeline hoạt động, nội dung AI,
-                thư viện truyền thông và quyền truy cập — đồng bộ trực tiếp với Google Sheets.
+                Quản lý project, pipeline hoạt động, nội dung AI và thư viện truyền thông của team EX trong một hệ thống sạch, rõ và đồng bộ Google Sheets.
               </p>
             </div>
 
