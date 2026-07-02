@@ -486,7 +486,6 @@ export function Activities() {
           <section className="activity-workbench professional-card">
             <div className="activity-workbench-head">
               <div>
-                <p className="eyebrow">Jira-style workbench</p>
                 <h2>Điều phối hoạt động truyền thông</h2>
                 <span>Kéo task sang cột để đổi pipeline. Click vào card để mở chi tiết, checklist và review notes.</span>
               </div>

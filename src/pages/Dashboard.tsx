@@ -1,10 +1,12 @@
 import type { CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '../components/ui/Badge';
-import { Button } from '../components/ui/Button';
 import { useData } from '../context/DataContext';
 import { getDeadlineIndicator, type Activity } from '../data/mockData';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, PieChart, Pie, Cell,
+} from 'recharts';
 
 type FocusItem = {
   id: string;
@@ -54,42 +56,16 @@ export function Dashboard() {
   const dueSoon = activities.filter(a => a.deadline && a.deadline >= today && a.deadline <= threeDaysLater && !isDone(a)).length;
   const approvedUnpublished = contents.filter(c => (c.status || 'Draft') === 'Approved' && !c.publishedAt).length;
 
+  // 4 KPI cards — súc tích, đủ thông tin
   const stats = [
-    { label: 'Tổng hoạt động', value: total, caption: `${projects.length} dự án đang theo dõi`, tone: '#101828', accent: '#64748b' },
-    { label: 'Hoàn thành', value: completed, caption: `${completionRate}% completion rate`, tone: '#047857', accent: '#10b981' },
-    { label: 'Đang thực hiện', value: inProgress, caption: 'Cần theo sát tiến độ', tone: '#2563eb', accent: '#3b82f6' },
-    { label: 'Sắp đến hạn', value: dueSoon, caption: 'Trong 3 ngày tới', tone: '#b45309', accent: '#f59e0b' },
-    { label: 'Quá hạn', value: overdue, caption: 'Cần xử lý ưu tiên', tone: '#be123c', accent: '#e11d48' },
+    { label: 'Tổng hoạt động', value: total, caption: `${projects.length} dự án`, tone: '#101828', accent: '#64748b' },
+    { label: 'Đang thực hiện', value: inProgress, caption: `${completionRate}% hoàn thành`, tone: '#2563eb', accent: '#3b82f6' },
+    { label: 'Sắp / Quá hạn', value: dueSoon + overdue, caption: `${overdue} quá hạn`, tone: overdue > 0 ? '#be123c' : '#b45309', accent: overdue > 0 ? '#e11d48' : '#f59e0b' },
+    { label: 'Chờ duyệt', value: waiting, caption: `${approvedUnpublished} approved chưa đăng`, tone: '#c2410c', accent: '#ea580c' },
   ];
 
-  const startActions = [
-    {
-      title: 'Tạo chiến dịch bài bản',
-      desc: 'Workflow template, tạo nhanh.',
-      action: 'Mở Workflow',
-      onClick: () => navigate('/workflow'),
-    },
-    {
-      title: 'Viết nội dung gấp',
-      desc: 'Copy nhanh, lưu vào Library.',
-      action: 'Mở AI Assistant',
-      onClick: () => navigate('/ai-assistant'),
-    },
-    {
-      title: 'Quản lý timeline/task',
-      desc: 'Project, owner, deadline, status.',
-      action: 'Mở Hoạt động',
-      onClick: () => navigate('/activities'),
-    },
-    {
-      title: 'Lưu/chỉnh nội dung có sẵn',
-      desc: 'Thêm, sửa, theo dõi lifecycle.',
-      action: 'Mở Thư viện',
-      onClick: () => navigate('/library'),
-    },
-  ];
-
-  const getProjectName = (projectId: string) => projects.find(p => p.id === projectId)?.name || 'Không có dự án';
+  const getProjectName = (projectId: string) =>
+    projects.find(p => p.id === projectId)?.name || 'Không có dự án';
 
   const activityFocusItems: FocusItem[] = activities
     .filter(activity => !isDone(activity))
@@ -111,7 +87,7 @@ export function Dashboard() {
         items.push({ ...base, reason: 'Sắp đến hạn', tone: 'warning' });
       }
       if (activity.status === 'Chờ duyệt') {
-        items.push({ ...base, reason: activity.approver ? `Chờ duyệt: ${activity.approver}` : 'Chờ duyệt', tone: 'review' });
+        items.push({ ...base, reason: activity.approver ? `Chờ: ${activity.approver}` : 'Chờ duyệt', tone: 'review' });
       }
       if (!activity.assignee) {
         items.push({ ...base, reason: 'Chưa có owner', tone: 'muted' });
@@ -131,11 +107,11 @@ export function Dashboard() {
       context: content.projectName || 'Nội dung độc lập',
       owner: content.approver || 'Chưa gán người duyệt',
       due: content.publishedAt ? formatDate(content.publishedAt) : '—',
-      reason: (content.status || 'Draft') === 'Approved' ? 'Approved, chưa publish' : 'Content đang review',
+      reason: (content.status || 'Draft') === 'Approved' ? 'Approved, chưa publish' : 'Đang review',
       tone: (content.status || 'Draft') === 'Approved' ? 'success' : 'review',
     }));
 
-  const focusItems = [...activityFocusItems, ...contentFocusItems].slice(0, 8);
+  const focusItems = [...activityFocusItems, ...contentFocusItems].slice(0, 7);
 
   const pieData = [
     { name: 'Chưa bắt đầu', value: notStarted, color: '#94a3b8' },
@@ -149,8 +125,6 @@ export function Dashboard() {
     const done = pActs.filter(isDone).length;
     return { name: p.name, total: pActs.length, done };
   });
-
-  const activeActivities = activities.filter(a => a.status === 'Đang thực hiện').slice(0, 6);
 
   if (loading) {
     return (
@@ -168,29 +142,14 @@ export function Dashboard() {
 
   return (
     <div className="page-shell">
-      <div className="page-header">
-        <p className="page-subtitle !mt-0">Bắt đầu đúng luồng, theo dõi việc cần xử lý hôm nay và kiểm soát tiến độ truyền thông.</p>
-        <div className="dashboard-health">
-          <div className="dashboard-health-label">Tình trạng tổng thể</div>
-          <div className="dashboard-health-value">{completionRate}%</div>
-        </div>
-      </div>
-
-      <section className="start-here-grid" aria-label="Bắt đầu nhanh">
-        {startActions.map(action => (
-          <article key={action.title} className="start-card panel-card">
-            <div>
-              <h2>{action.title}</h2>
-              <p>{action.desc}</p>
-            </div>
-            <Button variant="secondary" size="sm" onClick={action.onClick}>{action.action}</Button>
-          </article>
-        ))}
-      </section>
-
+      {/* KPI Row */}
       <section className="kpi-grid" aria-label="Chỉ số tổng quan">
         {stats.map(stat => (
-          <article key={stat.label} className="panel-card kpi-card" style={{ '--tone': stat.tone, '--accent': stat.accent } as CSSProperties}>
+          <article
+            key={stat.label}
+            className="panel-card kpi-card"
+            style={{ '--tone': stat.tone, '--accent': stat.accent } as CSSProperties}
+          >
             <div className="kpi-label">{stat.label}</div>
             <div className="kpi-value">{stat.value}</div>
             <div className="kpi-caption">{stat.caption}</div>
@@ -198,89 +157,113 @@ export function Dashboard() {
         ))}
       </section>
 
-      <section className="today-focus panel-card">
-        <div className="today-focus-head">
-          <h2 className="panel-card-title">Today focus</h2>
-          <div className="today-focus-summary">
-            <span>{overdue} quá hạn</span>
-            <span>{dueSoon} sắp hạn</span>
-            <span>{waiting} chờ duyệt</span>
-            <span>{approvedUnpublished} approved chưa publish</span>
-          </div>
-        </div>
+      {/* Main 2-col layout */}
+      <section className="db-main-grid">
 
-        {focusItems.length === 0 ? (
-          <div className="empty-state">Không có việc ưu tiên ngay lúc này.</div>
-        ) : (
-          <div className="focus-list">
-            {focusItems.map(item => (
-              <button key={`${item.type}-${item.id}-${item.reason}`} className="focus-row" onClick={() => navigate(item.type === 'activity' ? '/activities' : '/library')}>
-                <span className={`focus-reason ${focusToneClass(item.tone)}`}>{item.reason}</span>
-                <span className="focus-main">
-                  <strong>{item.title}</strong>
-                  <small>{item.context}</small>
-                </span>
-                <span className="focus-meta">{item.owner}</span>
-                <span className="focus-date">{item.due}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="dashboard-grid">
-        <article className="chart-card panel-card">
-          <h2 className="panel-card-title">Phân bổ trạng thái</h2>
-          {pieData.length > 0 ? (
-            <>
-              <div className="chart-body">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={72} outerRadius={104} paddingAngle={5} dataKey="value">
-                      {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
-                    </Pie>
-                    <Tooltip contentStyle={{ background: '#fff', border: '1px solid #dfe5ef', borderRadius: 12, fontSize: 13, boxShadow: '0 16px 32px rgba(16,24,40,.12)' }} />
-                  </PieChart>
-                </ResponsiveContainer>
+        {/* Left col: Today Focus */}
+        <div className="db-left-col">
+          <article className="today-focus panel-card">
+            <div className="today-focus-head">
+              <h2 className="panel-card-title">Cần xử lý hôm nay</h2>
+              <div className="today-focus-chips">
+                {overdue > 0 && <span className="focus-chip focus-chip-danger">{overdue} quá hạn</span>}
+                {dueSoon > 0 && <span className="focus-chip focus-chip-warning">{dueSoon} sắp hạn</span>}
+                {waiting > 0 && <span className="focus-chip focus-chip-review">{waiting} chờ duyệt</span>}
               </div>
-              <div className="status-legend">
-                {pieData.map(item => (
-                  <div key={item.name} className="legend-item">
-                    <span>{item.name}</span>
-                    <span className="legend-count">{item.value}</span>
-                  </div>
+            </div>
+
+            {focusItems.length === 0 ? (
+              <div className="empty-state">Không có việc ưu tiên ngay lúc này. 🎉</div>
+            ) : (
+              <div className="focus-list">
+                {focusItems.map(item => (
+                  <button
+                    key={`${item.type}-${item.id}-${item.reason}`}
+                    className="focus-row"
+                    onClick={() => navigate(item.type === 'activity' ? '/activities' : '/library')}
+                  >
+                    <span className={`focus-reason ${focusToneClass(item.tone)}`}>{item.reason}</span>
+                    <span className="focus-main">
+                      <strong>{item.title}</strong>
+                      <small>{item.context}</small>
+                    </span>
+                    <span className="focus-date">{item.due}</span>
+                  </button>
                 ))}
               </div>
-            </>
-          ) : (
-            <div className="empty-state">Chưa có dữ liệu để hiển thị.</div>
-          )}
-        </article>
+            )}
+          </article>
+        </div>
 
-        <article className="chart-card panel-card">
-          <h2 className="panel-card-title">Tiến độ theo dự án</h2>
-          {projectChartData.length > 0 ? (
-            <div className="chart-body">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={projectChartData} margin={{ top: 18, right: 18, bottom: 4, left: -14 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#edf1f7" vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#667085' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 12, fill: '#667085' }} axisLine={false} tickLine={false} allowDecimals={false} />
-                  <Tooltip contentStyle={{ background: '#fff', border: '1px solid #dfe5ef', borderRadius: 12, fontSize: 13, boxShadow: '0 16px 32px rgba(16,24,40,.12)' }} />
-                  <Bar dataKey="total" fill="#d8e0ee" radius={[8, 8, 0, 0]} name="Tổng" maxBarSize={70} />
-                  <Bar dataKey="done" fill="#ea580c" radius={[8, 8, 0, 0]} name="Hoàn thành" maxBarSize={70} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <div className="empty-state">Chưa có dự án nào.</div>
-          )}
-        </article>
+        {/* Right col: Charts stacked */}
+        <div className="db-right-col">
+          {/* Pie chart */}
+          <article className="panel-card db-chart-card">
+            <h2 className="panel-card-title">Phân bổ trạng thái</h2>
+            {pieData.length > 0 ? (
+              <>
+                <div className="db-chart-body">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={pieData} cx="50%" cy="50%" innerRadius={52} outerRadius={82} paddingAngle={4} dataKey="value">
+                        {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                      </Pie>
+                      <Tooltip contentStyle={{ background: '#fff', border: '1px solid #dfe5ef', borderRadius: 10, fontSize: 12 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="status-legend">
+                  {pieData.map(item => (
+                    <div key={item.name} className="legend-item">
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: item.color, flexShrink: 0 }} />
+                        {item.name}
+                      </span>
+                      <span className="legend-count">{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="empty-state">Chưa có dữ liệu.</div>
+            )}
+          </article>
+
+          {/* Bar chart */}
+          <article className="panel-card db-chart-card">
+            <h2 className="panel-card-title">Tiến độ theo dự án</h2>
+            {projectChartData.length > 0 ? (
+              <div className="db-chart-body">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={projectChartData} margin={{ top: 12, right: 12, bottom: 0, left: -18 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#edf1f7" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#667085' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: '#667085' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <Tooltip contentStyle={{ background: '#fff', border: '1px solid #dfe5ef', borderRadius: 10, fontSize: 12 }} />
+                    <Bar dataKey="total" fill="#d8e0ee" radius={[6, 6, 0, 0]} name="Tổng" maxBarSize={56} />
+                    <Bar dataKey="done" fill="#ea580c" radius={[6, 6, 0, 0]} name="Hoàn thành" maxBarSize={56} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="empty-state">Chưa có dự án nào.</div>
+            )}
+          </article>
+        </div>
       </section>
 
-      <article className="panel-card">
-        <h2 className="panel-card-title">Hoạt động đang triển khai</h2>
-        <div className="table-wrap mt-4">
+      {/* Active activities table — compact */}
+      <article className="panel-card" style={{ marginTop: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <h2 className="panel-card-title">Hoạt động đang triển khai</h2>
+          <button
+            className="db-see-all-btn"
+            onClick={() => navigate('/activities')}
+          >
+            Xem tất cả →
+          </button>
+        </div>
+        <div className="table-wrap">
           <table className="data-table">
             <thead>
               <tr>
@@ -292,14 +275,14 @@ export function Dashboard() {
               </tr>
             </thead>
             <tbody>
-              {activeActivities.length === 0 ? (
+              {activities.filter(a => a.status === 'Đang thực hiện').slice(0, 5).length === 0 ? (
                 <tr><td colSpan={5} className="text-center py-10 text-text-tertiary">Không có hoạt động nào đang triển khai.</td></tr>
-              ) : activeActivities.map(activity => (
+              ) : activities.filter(a => a.status === 'Đang thực hiện').slice(0, 5).map(activity => (
                 <tr key={activity.id}>
                   <td><span className="font-bold text-text-primary">{activity.name}</span></td>
                   <td>{getProjectName(activity.projectId)}</td>
-                  <td>{activity.assignee || 'Chưa gán'}</td>
-                  <td><span className="font-bold text-text-primary">{activity.deadline || 'Chưa có'}</span></td>
+                  <td>{activity.assignee || <span style={{ color: '#94a3b8' }}>Chưa gán</span>}</td>
+                  <td><span className="font-bold text-text-primary">{formatDate(activity.deadline)}</span></td>
                   <td><Badge status={activity.status} /></td>
                 </tr>
               ))}

@@ -71,7 +71,7 @@ Yêu cầu định dạng cho Marketing Content Pipeline:
 - Trả về một pipeline triển khai nội dung hoàn chỉnh cho team IC/EX, lấy cảm hứng từ workflow research → write → asset → review → publish.
 - Không tạo ảnh thật, không gọi công cụ ngoài. Chỉ tạo output có thể dùng để triển khai.
 - Cấu trúc bắt buộc:
-  1. Campaign snapshot: mục tiêu, audience, insight/ngữ cảnh, thông điệp chính, CTA, thông tin còn thiếu.
+  1. Campaign snapshot: mục tiêu, audience, insight/ngữ cảnh, thông điệp chính, CTA, thông cụ còn thiếu.
   2. Content angles: 3 góc tiếp cận khác nhau, mỗi góc có mục tiêu, cảm xúc chính và thời điểm dùng.
   3. Recommended pipeline: các bước từ brief, draft, review, visual, publish, recap; mỗi bước có output, owner placeholder và trạng thái gợi ý.
   4. Primary copy: một bản GTalk/email/post chính có thể dùng ngay theo tone văn phòng.
@@ -486,53 +486,42 @@ export function AIStudio() {
 
   return (
     <div className="ai-shell page-shell">
-      <aside className="ai-sidebar professional-card">
-        <div>
-          <p className="eyebrow">EX AI Studio</p>
-          <h1 className="ai-title">AI Assistant</h1>
-          <p className="ai-subtitle">Chọn một tác vụ, thêm ngữ cảnh dự án nếu cần, rồi để AI soạn bản dùng ngay.</p>
-        </div>
-
-        <button type="button" className="ai-visual-brief-card" onClick={() => handleQuickAction(QUICK_ACTIONS.find(action => action.id === 'visualBrief')!)}>
-          <span>Visual Brief Studio</span>
-          <strong>Open Design-lite cho banner, poster, key visual.</strong>
-          <small>Tạo layout, copy trên visual, art direction, prompt Canva/Figma/image tool.</small>
-        </button>
-
-        <div className="ai-section-label">Hành động nhanh</div>
-        <div className="ai-action-list">
-          {QUICK_ACTIONS.map(action => (
-            <button key={action.id} onClick={() => handleQuickAction(action)} className={`ai-action ai-action-${action.id} ${selectedTool === action.id ? 'ai-action-active' : ''}`}>
-              <span>{action.title}</span>
-              <small>{action.description}</small>
-            </button>
-          ))}
-        </div>
-
-        {messages.length > 0 && (
-          <button onClick={handleReset} className="ai-reset-button">Cuộc trò chuyện mới</button>
-        )}
-      </aside>
-
       <section className="ai-chat-panel professional-card">
-        <div className="ai-chat-header">
+        <div className="ai-chat-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
-            <p className="ai-chat-kicker">Copy-ready output</p>
+            <p className="ai-chat-kicker">EX AI Studio</p>
             <h2>IC Content Assistant</h2>
+            <p className="ai-subtitle" style={{ fontSize: '13px', color: 'var(--muted)', marginTop: '4px' }}>Chọn một tác vụ, thêm ngữ cảnh dự án nếu cần, rồi để AI soạn bản dùng ngay.</p>
           </div>
-          <div className="ai-chat-note">Memory on · {styleReferences.filter(ref => ref.isActive).length} bài mẫu</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div className="ai-chat-note" style={{ margin: 0 }}>Memory on · {styleReferences.filter(ref => ref.isActive).length} bài mẫu</div>
+            {messages.length > 0 && (
+              <button onClick={handleReset} className="ai-reset-button" style={{ margin: 0, padding: '6px 12px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '6px', fontSize: '13px', cursor: 'pointer' }}>Cuộc trò chuyện mới</button>
+            )}
+          </div>
         </div>
 
         <div className="ai-messages hide-scrollbar">
           {messages.length === 0 && (
             <div className="ai-empty-state">
-              <div className="ai-empty-mark">AI</div>
+              <div className="ai-empty-mark">EX</div>
               <h3>Bạn muốn viết nội dung gì?</h3>
-              <p>Chọn hành động nhanh hoặc nhập yêu cầu. AI có thể viết copy-ready content hoặc tạo visual brief/prompt thiết kế để chuyển sang Canva, Figma hoặc image tool.</p>
-              <div className="ai-suggestion-grid">
-                {['Tạo pipeline cho chiến dịch EES', 'Viết GTalk nhắc khảo sát EES', 'Tạo Visual Brief cho banner GTalk'].map((ex) => (
-                  <button key={ex} onClick={() => handleSend(ex)}>{ex}</button>
-                ))}
+              <p>Chọn hành động nhanh để bắt đầu hoặc tự nhập yêu cầu. AI có thể viết copy-ready content hoặc tạo visual brief/prompt thiết kế để chuyển sang Canva, Figma, v.v.</p>
+              
+              <div className="ai-welcome-grid">
+                <button type="button" className="ai-visual-brief-card" onClick={() => handleQuickAction(QUICK_ACTIONS.find(action => action.id === 'visualBrief')!)}>
+                  <span>Visual Brief Studio</span>
+                  <strong>Open Design-lite cho banner, poster, key visual.</strong>
+                  <small>Tạo layout, copy trên visual, art direction, prompt Canva/Figma/image tool.</small>
+                </button>
+                <div className="ai-welcome-actions">
+                  {QUICK_ACTIONS.filter(a => a.id !== 'visualBrief').map(action => (
+                    <button key={action.id} onClick={() => handleQuickAction(action)} className={`ai-action ai-action-${action.id}`}>
+                      <span>{action.title}</span>
+                      <small>{action.description}</small>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -626,5 +615,3 @@ export function AIStudio() {
     </div>
   );
 }
-
-
